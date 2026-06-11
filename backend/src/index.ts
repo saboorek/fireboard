@@ -1,0 +1,91 @@
+import express from 'express';
+import dotenv from 'dotenv';
+import cors from 'cors';
+import session from 'express-session';
+import MongoStore from 'connect-mongo';
+import passport from 'passport';
+import { Strategy as DiscordStrategy } from 'passport-discord';
+import { connectDatabase } from './config/database';
+
+// --- Import Routes --- //
+import auth from './routes/auth';
+import characters from './routes/characters';
+import './models/DiscordUser';
+import roles from './routes/roles';
+
+dotenv.config();
+
+const requiredEnvVars = [
+    'MONGO_URL',
+    'SESSION_SECRET',
+    'DISCORD_CLIENT_ID',
+    'DISCORD_CLIENT_SECRET',
+    'DISCORD_CALLBACK_URL'
+];
+
+for (const envVar of requiredEnvVars) {
+    if (!process.env[envVar]) {
+        throw new Error(`Missing required environment variable: ${envVar}`);
+    }
+}
+
+const app = express();
+const isProduction = process.env.NODE_ENV === 'production';
+
+app.use(express.json());
+
+app.use(cors({
+    origin: isProduction ? process.env.CLIENT_URL : 'http://localhost:5173',
+    credentials: true,
+}));
+
+app.use(session({
+    secret: process.env.SESSION_SECRET!,
+    resave: false,
+    saveUninitialized: false,
+    store: MongoStore.create({
+        mongoUrl: process.env.MONGO_URL!,
+        touchAfter: 24 * 3600,
+    }),
+    cookie: {
+        secure: isProduction,
+        httpOnly: true,
+        sameSite: 'lax',
+        maxAge: 1000 * 60 * 60 * 24 * 7,
+    },
+}));
+
+passport.serializeUser((user, done) => done(null, user));
+passport.deserializeUser((obj: Express.User, done) => done(null, obj));
+
+passport.use(new DiscordStrategy(
+    {
+        clientID: process.env.DISCORD_CLIENT_ID!,
+        clientSecret: process.env.DISCORD_CLIENT_SECRET!,
+        callbackURL: process.env.DISCORD_CALLBACK_URL!,
+        scope: ['identify', 'guilds'],
+    },
+    (_accessToken, _refreshToken, profile, done) => done(null, profile)
+));
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+app.use('/auth', auth);
+app.use('/characters', characters);
+app.use('/roles', roles);
+
+
+const PORT = process.env.PORT || 5000;
+
+const startServer = async () => {
+    try {
+        await connectDatabase();
+        app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}`));
+    } catch (error) {
+        console.error('❌ Failed to start server:', error);
+        process.exit(1);
+    }
+};
+
+startServer();
