@@ -1,6 +1,8 @@
 import { Router, Request, Response } from 'express';
 import { Character } from '../models/Character';
 import { DiscordUser } from '../models/DiscordUser';
+import { Role } from '../models/Role';
+import type { IPermissions } from '../models/Role';
 import { isAuthenticated } from '../middleware/auth';
 import { requirePermission } from '../middleware/permissions';
 import { sendDiscordMessage } from '../utils/discord';
@@ -8,12 +10,37 @@ import { isDeveloper } from '../config/developers';
 
 const router = Router();
 
-const FULL_PERMISSIONS = {
-    hasAdminAccess: true,
-    canManagePermission: true,
-    hasStatisticAccess: true,
-    canEditCharacter: true,
-};
+// Buduje pusty obiekt uprawnień na podstawie kluczy z bazy (pierwsza rola lub fallback)
+async function getEmptyPermissions(): Promise<IPermissions> {
+    const sampleRole = await Role.findOne().lean();
+    if (sampleRole?.permissions) {
+        const empty = {} as IPermissions;
+        for (const key of Object.keys(sampleRole.permissions) as (keyof IPermissions)[]) {
+            empty[key] = false;
+        }
+        return empty;
+    }
+    return {
+        hasAdminAccess: false,
+        canManagePermission: false,
+        hasStatisticAccess: false,
+        canEditCharacter: false,
+        hasBusinessesAccess: false,
+        canAddBusiness: false,
+        canEditBusiness: false,
+        canDeleteBusiness: false,
+        canAddBusinessReport: false,
+        canAddBusinessCitation: false,
+        canAddBusinessNotes: false,
+    };
+}
+
+async function getFullPermissions(): Promise<IPermissions> {
+    const empty = await getEmptyPermissions();
+    return Object.fromEntries(
+        Object.keys(empty).map(k => [k, true])
+    ) as unknown as IPermissions;
+}
 
 // Pobierz postacie zalogowanego użytkownika
 router.get('/', isAuthenticated, async (req: Request, res: Response) => {
@@ -50,6 +77,7 @@ router.post('/', isAuthenticated, async (req: Request, res: Response) => {
 
         const character = new Character({
             discordId: user.id,
+            discordUsername: user.username ?? null,
             firstName: firstName.trim(),
             lastName: lastName.trim(),
             roles: [],
@@ -92,27 +120,24 @@ router.post('/select', isAuthenticated, async (req: Request, res: Response) => {
             return res.status(403).json({ message: 'Brak dostępu do tej postaci' });
         }
 
-        let permissions = {
-            hasAdminAccess: false,
-            canManagePermission: false,
-            hasStatisticAccess: false,
-            canEditCharacter: false,
-        };
+        let permissions: IPermissions;
 
         if (isDeveloper(user.id)) {
             console.log(`[POST /characters/select] Developer detected — full permissions granted`);
-            permissions = { ...FULL_PERMISSIONS };
+            permissions = await getFullPermissions();
         } else {
+            permissions = await getEmptyPermissions();
+
             const discordUser = await DiscordUser.findOne({ discordId: user.id });
             if (discordUser?.permissions) {
-                for (const key of Object.keys(permissions) as (keyof typeof permissions)[]) {
-                    if (discordUser.permissions[key]) permissions[key] = true;
+                for (const key of Object.keys(permissions) as (keyof IPermissions)[]) {
+                    if ((discordUser.permissions as any)[key]) permissions[key] = true;
                 }
             }
 
             for (const role of character.roles as any[]) {
                 if (role.permissions) {
-                    for (const key of Object.keys(permissions) as (keyof typeof permissions)[]) {
+                    for (const key of Object.keys(permissions) as (keyof IPermissions)[]) {
                         if (role.permissions[key]) permissions[key] = true;
                     }
                 }
@@ -137,27 +162,19 @@ router.post('/select', isAuthenticated, async (req: Request, res: Response) => {
     }
 });
 
-// ← WAŻNE: /avatar MUSI być przed /:id żeby Express nie traktował "avatar" jako ID
-// Użytkownik ustawia avatar własnej postaci
 router.put('/:id/avatar', isAuthenticated, async (req: Request, res: Response) => {
     try {
         const user = req.user as any;
         const { avatarUrl } = req.body;
 
-        console.log(`[PUT /characters/${req.params.id}/avatar] user: ${user.id}, avatarUrl: ${avatarUrl}`);
-
         const character = await Character.findOneAndUpdate(
             { _id: req.params.id, discordId: user.id },
             { avatarUrl: avatarUrl?.trim() || null },
-            { new: true }
+            { returnDocument: 'after', runValidators: true }
         );
 
-        if (!character) {
-            console.warn(`[PUT /characters/${req.params.id}/avatar] Postać nie znaleziona lub brak dostępu`);
-            return res.status(404).json({ message: 'Postać nie znaleziona' });
-        }
+        if (!character) return res.status(404).json({ message: 'Postać nie znaleziona' });
 
-        console.log(`[PUT /characters/${req.params.id}/avatar] Zaktualizowano avatar dla: ${character.firstName} ${character.lastName}`);
         res.json(character);
     } catch (err) {
         console.error(`[PUT /characters/${req.params.id}/avatar]`, err);
@@ -165,12 +182,9 @@ router.put('/:id/avatar', isAuthenticated, async (req: Request, res: Response) =
     }
 });
 
-// Edytuj dane postaci (tylko admin)
 router.put('/:id', isAuthenticated, requirePermission('canEditCharacter'), async (req: Request, res: Response) => {
     try {
         const { firstName, lastName, avatarUrl } = req.body;
-
-        console.log(`[PUT /characters/${req.params.id}] firstName: ${firstName}, lastName: ${lastName}, avatarUrl: ${avatarUrl}`);
 
         if (!firstName?.trim() || !lastName?.trim()) {
             return res.status(400).json({ message: 'Imię i nazwisko są wymagane' });
@@ -183,7 +197,7 @@ router.put('/:id', isAuthenticated, requirePermission('canEditCharacter'), async
                 lastName: lastName.trim(),
                 avatarUrl: avatarUrl?.trim() || null,
             },
-            { new: true }
+            { returnDocument: 'after', runValidators: true }
         );
 
         if (!character) return res.status(404).json({ message: 'Postać nie znaleziona' });
@@ -199,7 +213,6 @@ router.put('/:id', isAuthenticated, requirePermission('canEditCharacter'), async
             timestamp: new Date().toISOString(),
         });
 
-        console.log(`[PUT /characters/${req.params.id}] Zaktualizowano postać: ${character.firstName} ${character.lastName}`);
         res.json(character);
     } catch (err) {
         console.error(`[PUT /characters/${req.params.id}]`, err);

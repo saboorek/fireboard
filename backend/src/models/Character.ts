@@ -2,6 +2,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface ICharacter extends Document {
     discordId: string;
+    discordUsername?: string;
     firstName: string;
     lastName: string;
     roles: mongoose.Types.ObjectId[];
@@ -11,6 +12,7 @@ export interface ICharacter extends Document {
 
 const CharacterSchema = new Schema<ICharacter>({
     discordId: { type: String, required: true, index: true },
+    discordUsername: { type: String, default: null },
     firstName: { type: String, required: true, trim: true },
     lastName: { type: String, required: true, trim: true },
     roles: [{ type: Schema.Types.ObjectId, ref: 'Role' }],

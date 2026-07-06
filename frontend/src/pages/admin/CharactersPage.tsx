@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import config from '../../utils/config';
+import { useCharacter } from '../../context/CharacterContext';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faUser, faPlus, faXmark, faChevronDown, faChevronUp, faPen, faCheck } from '@fortawesome/free-solid-svg-icons';
 
@@ -14,18 +15,19 @@ interface Character {
     firstName: string;
     lastName: string;
     discordId: string;
+    discordUsername?: string | null;
     roles: Role[];
     avatarUrl?: string | null;
 }
 
 export const CharactersPage = () => {
+    const { refreshPermissions } = useCharacter();
     const [characters, setCharacters] = useState<Character[]>([]);
     const [roles, setRoles] = useState<Role[]>([]);
     const [loading, setLoading] = useState(true);
     const [expandedId, setExpandedId] = useState<string | null>(null);
     const [assigningId, setAssigningId] = useState<string | null>(null);
     const [selectedRoleId, setSelectedRoleId] = useState('');
-
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editFirstName, setEditFirstName] = useState('');
     const [editLastName, setEditLastName] = useState('');
@@ -58,6 +60,7 @@ export const CharactersPage = () => {
         });
         if (res.ok) {
             toast.success('Rola została przypisana');
+            await refreshPermissions();
         } else {
             toast.error('Nie udało się przypisać roli');
         }
@@ -76,6 +79,7 @@ export const CharactersPage = () => {
         });
         if (res.ok) {
             toast.success(`Rola "${roleName}" została odebrana`);
+            await refreshPermissions();
         } else {
             toast.error('Nie udało się odebrać roli');
         }
@@ -137,7 +141,6 @@ export const CharactersPage = () => {
 
                     return (
                         <div key={char._id} className="bg-gray-900 rounded-xl overflow-hidden">
-                            {/* Nagłówek postaci */}
                             <button
                                 onClick={() => toggleExpand(char._id)}
                                 className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-800 transition-colors"
@@ -154,7 +157,12 @@ export const CharactersPage = () => {
                                         <p className="text-white font-semibold">{char.firstName} {char.lastName}</p>
                                         <p className="text-gray-500 text-xs">
                                             <span className="text-gray-400">Discord: </span>
-                                            <span className="font-mono">{char.discordId}</span>
+                                            <span className="font-mono">
+                                                {char.discordUsername ? `${char.discordUsername}` : char.discordId}
+                                            </span>
+                                            {char.discordUsername && (
+                                                <span className="text-gray-600 ml-1">({char.discordId})</span>
+                                            )}
                                         </p>
                                     </div>
                                 </div>
@@ -175,11 +183,8 @@ export const CharactersPage = () => {
                                 </div>
                             </button>
 
-                            {/* Panel zarządzania */}
                             {isExpanded && (
                                 <div className="border-t border-gray-700/50 px-5 py-4 flex flex-col gap-5">
-
-                                    {/* Edycja danych postaci */}
                                     <div>
                                         <p className="text-gray-400 text-sm mb-3 font-semibold uppercase tracking-wider">Dane postaci</p>
                                         {isEditing ? (
@@ -238,7 +243,6 @@ export const CharactersPage = () => {
                                         )}
                                     </div>
 
-                                    {/* Role */}
                                     <div>
                                         <p className="text-gray-400 text-sm mb-3 font-semibold uppercase tracking-wider">Przypisane role</p>
                                         {char.roles.length === 0 ? (

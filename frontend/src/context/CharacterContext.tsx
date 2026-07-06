@@ -17,6 +17,7 @@ interface CharacterContextType {
     setSelectedCharacter: (char: Character) => void;
     clearCharacter: () => void;
     updateCharacter: (partial: Partial<Character>) => void;
+    refreshPermissions: () => Promise<void>;
     loading: boolean;
 }
 
@@ -26,19 +27,29 @@ export const CharacterProvider = ({ children }: { children: ReactNode }) => {
     const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        fetch(`${config.URL}/auth/session`, { credentials: 'include' })
+    const refresh = async () => {
+        const data = await fetch(`${config.URL}/auth/session`, { credentials: 'include' })
             .then(r => r.ok ? r.json() : null)
-            .then(data => {
-                if (data?.activeCharacter) {
-                    const ac = data.activeCharacter;
-                    setSelectedCharacter({
-                        ...ac,
-                        _id: ac._id ?? ac.id,
-                    });
+            .catch(() => null);
+
+        if (data?.activeCharacter) {
+            const ac = data.activeCharacter;
+            setSelectedCharacter(prev => {
+                if (JSON.stringify(prev?.permissions) !== JSON.stringify(ac.permissions)) {
+                    return { ...ac, _id: ac._id ?? ac.id };
                 }
-            })
-            .finally(() => setLoading(false));
+                return prev;
+            });
+        } else {
+            setSelectedCharacter(null);
+        }
+    };
+
+    useEffect(() => {
+        refresh().finally(() => setLoading(false));
+
+        const interval = setInterval(refresh, 10_000);
+        return () => clearInterval(interval);
     }, []);
 
     const handleSelectCharacter = async (char: Character) => {
@@ -74,6 +85,7 @@ export const CharacterProvider = ({ children }: { children: ReactNode }) => {
             setSelectedCharacter: handleSelectCharacter,
             clearCharacter,
             updateCharacter,
+            refreshPermissions: refresh,
             loading,
         }}>
             {children}

@@ -19,7 +19,7 @@ export interface SidebarChildItem {
     title: string;
     icon?: IconDefinition;
     roles?: string[];
-    permission?: keyof Permissions; // ← flaga uprawnienia
+    permission?: keyof Permissions;
 }
 
 export interface SidebarItemDef {
@@ -28,7 +28,7 @@ export interface SidebarItemDef {
     href?: string;
     icon?: IconDefinition;
     roles?: string[];
-    permission?: keyof Permissions; // ← flaga uprawnienia
+    permission?: keyof Permissions;
     children?: SidebarChildItem[];
 }
 
@@ -45,10 +45,10 @@ export const sidebarItems: SidebarItemDef[] = [
         permission: 'hasAdminAccess',
         children: [
             { href: '/admin/settings', title: 'Zarządzanie parametrami', icon: faScrewdriverWrench, permission: 'hasAdminAccess' },
-            { href: '/admin/roles',    title: 'Zarządzanie rangami',     icon: faUserGear,          permission: 'canManagePermission' },
-            { href: '/admin/profiles', title: 'Profile postaci',         icon: faUserTie,           permission: 'canEditCharacter' },
-            { href: '/admin/logs',     title: 'Transkrypty',             icon: faMagnifyingGlass,   permission: 'hasAdminAccess' },
-            { href: '/admin/stats',    title: 'Statystyki',              icon: faChartPie,          permission: 'hasStatisticAccess' },
+            { href: '/admin/roles', title: 'Zarządzanie rangami', icon: faUserGear, permission: 'canManagePermission' },
+            { href: '/admin/profiles', title: 'Profile postaci', icon: faUserTie, permission: 'canEditCharacter' },
+            { href: '/admin/logs', title: 'Transkrypty', icon: faMagnifyingGlass, permission: 'hasAdminAccess' },
+            { href: '/admin/stats', title: 'Statystyki', icon: faChartPie, permission: 'hasStatisticAccess' },
         ],
     },
     {
@@ -62,10 +62,10 @@ export const sidebarItems: SidebarItemDef[] = [
     {
         type: 'section',
         title: 'Fire Prevention Division',
-        roles: ['FPD'],
+        permission: 'hasBusinessesAccess',
         children: [
-            { href: '/businesses', title: 'Biznesy',        icon: faBuilding },
-            { href: '/citations',  title: 'Tabela cytacji', icon: faFileInvoiceDollar },
+            { href: '/businesses', title: 'Biznesy', icon: faBuilding },
+            { href: '/citations', title: 'Tabela cytacji', icon: faFileInvoiceDollar },
         ],
     },
     {
@@ -73,7 +73,7 @@ export const sidebarItems: SidebarItemDef[] = [
         title: 'Professional Performance Section',
         roles: ['PPS'],
         children: [
-            { href: '/pps/cases',     title: 'Lista spraw',      icon: faScaleBalanced },
+            { href: '/pps/cases', title: 'Lista spraw', icon: faScaleBalanced },
             { href: '/pps/employees', title: 'Lista pracowników', icon: faUser },
         ],
     },

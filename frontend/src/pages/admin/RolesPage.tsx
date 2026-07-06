@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import config from '../../utils/config';
-import { PERMISSION_LABELS } from '../../types/permissions';
+import { PERMISSION_LABELS, emptyPermissions } from '../../types/permissions';
 import type { Permissions } from '../../types/permissions';
+import { useCharacter } from '../../context/CharacterContext';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPlus, faPen, faTrash } from '@fortawesome/free-solid-svg-icons';
 
@@ -12,14 +13,10 @@ interface Role {
     permissions: Permissions;
 }
 
-const emptyPermissions = (): Permissions => ({
-    hasAdminAccess: false,
-    canManagePermission: false,
-    hasStatisticAccess: false,
-    canEditCharacter: false,
-});
+const COLUMN_SIZE = 10;
 
 export const RolesPage = () => {
+    const { refreshPermissions } = useCharacter();
     const [roles, setRoles] = useState<Role[]>([]);
     const [showForm, setShowForm] = useState(false);
     const [editRole, setEditRole] = useState<Role | null>(null);
@@ -46,7 +43,7 @@ export const RolesPage = () => {
     const openEdit = (role: Role) => {
         setEditRole(role);
         setName(role.name);
-        setPerms({ ...role.permissions });
+        setPerms({ ...emptyPermissions(), ...role.permissions });
         setShowForm(true);
     };
 
@@ -74,6 +71,7 @@ export const RolesPage = () => {
             }
 
             await fetchRoles();
+            await refreshPermissions();
             setShowForm(false);
             toast.success(editRole ? `Rola "${name}" została zaktualizowana` : `Rola "${name}" została utworzona`);
         } catch {
@@ -93,6 +91,7 @@ export const RolesPage = () => {
 
         if (res.ok) {
             toast.success(`Rola "${roleName}" została usunięta`);
+            await refreshPermissions();
         } else {
             toast.error('Nie udało się usunąć roli');
         }
@@ -102,6 +101,12 @@ export const RolesPage = () => {
     const togglePerm = (key: keyof Permissions) => {
         setPerms(prev => ({ ...prev, [key]: !prev[key] }));
     };
+
+    const permKeys = Object.keys(PERMISSION_LABELS) as (keyof Permissions)[];
+    const columns: (keyof Permissions)[][] = [];
+    for (let i = 0; i < permKeys.length; i += COLUMN_SIZE) {
+        columns.push(permKeys.slice(i, i + COLUMN_SIZE));
+    }
 
     return (
         <div className="max-w-4xl mx-auto">
@@ -131,7 +136,7 @@ export const RolesPage = () => {
                                 ))}
                             </div>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 shrink-0 ml-4">
                             <button
                                 onClick={() => openEdit(role)}
                                 className="p-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white transition-colors"
@@ -154,8 +159,8 @@ export const RolesPage = () => {
             </div>
 
             {showForm && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-                    <div className="bg-gray-900 rounded-xl shadow-2xl w-[500px] p-6">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+                    <div className="bg-gray-900 rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto p-6">
                         <h2 className="text-xl font-bold text-white mb-5">
                             {editRole ? 'Edytuj rolę' : 'Nowa rola'}
                         </h2>
@@ -171,24 +176,36 @@ export const RolesPage = () => {
                                     className="w-full bg-gray-800 text-white rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-red-600"
                                 />
                             </div>
+
                             <div>
-                                <p className="text-gray-300 text-sm mb-3">Uprawnienia</p>
-                                <div className="flex flex-col gap-3">
-                                    {(Object.keys(PERMISSION_LABELS) as (keyof Permissions)[]).map(key => (
-                                        <label key={key} className="flex items-center gap-3 cursor-pointer group">
-                                            <input
-                                                type="checkbox"
-                                                checked={permissions[key]}
-                                                onChange={() => togglePerm(key)}
-                                                className="w-4 h-4 accent-red-600"
-                                            />
-                                            <span className="text-gray-300 group-hover:text-white transition-colors text-sm">
-                                                {PERMISSION_LABELS[key]}
-                                            </span>
-                                        </label>
+                                <p className="text-gray-300 text-sm mb-4">Uprawnienia</p>
+                                <div
+                                    className="gap-x-8"
+                                    style={{
+                                        display: 'grid',
+                                        gridTemplateColumns: `repeat(${columns.length}, 1fr)`,
+                                    }}
+                                >
+                                    {columns.map((col, colIdx) => (
+                                        <div key={colIdx} className="flex flex-col gap-5">
+                                            {col.map(key => (
+                                                <label key={key} className="flex items-start gap-3 cursor-pointer group">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={permissions[key] ?? false}
+                                                        onChange={() => togglePerm(key)}
+                                                        className="w-4 h-4 mt-0.5 accent-red-600 shrink-0"
+                                                    />
+                                                    <span className="text-gray-300 group-hover:text-white transition-colors text-sm leading-snug">
+                                                        {PERMISSION_LABELS[key]}
+                                                    </span>
+                                                </label>
+                                            ))}
+                                        </div>
                                     ))}
                                 </div>
                             </div>
+
                             {error && <p className="text-red-400 text-sm">{error}</p>}
                             <div className="flex gap-3 mt-2">
                                 <button

@@ -1,5 +1,9 @@
 import { Router, Request, Response } from 'express';
 import passport from 'passport';
+import { Character } from '../models/Character';
+import { DiscordUser } from '../models/DiscordUser';
+import { isDeveloper } from '../config/developers';
+import type { IPermissions } from '../models/Role';
 
 const router = Router();
 
@@ -13,14 +17,59 @@ async function hasRequiredRole(discordUserId: string): Promise<boolean> {
             `https://discord.com/api/v10/guilds/${guildId}/members/${discordUserId}`,
             { headers: { Authorization: `Bot ${botToken}` } }
         );
-
         if (!res.ok) return false;
-
         const member = await res.json() as { roles: string[] };
         return member.roles.includes(roleId);
     } catch {
         return false;
     }
+}
+
+async function recalculatePermissions(discordId: string, characterId: string): Promise<IPermissions | null> {
+    const character = await Character.findOne({
+        _id: characterId,
+        discordId,
+    }).populate('roles');
+
+    if (!character) return null;
+
+    const empty: IPermissions = {
+        hasAdminAccess: false,
+        canManagePermission: false,
+        hasStatisticAccess: false,
+        canEditCharacter: false,
+        hasBusinessesAccess: false,
+        canAddBusiness: false,
+        canEditBusiness: false,
+        canDeleteBusiness: false,
+        canAddBusinessReport: false,
+        canDeleteBusinessReport: false,
+        canAddBusinessCitation: false,
+        canDeleteBusinessCitation: false,
+        canAddBusinessNotes: false,
+        canEditCitationParameters: false,
+    };
+
+    if (isDeveloper(discordId)) {
+        return Object.fromEntries(Object.keys(empty).map(k => [k, true])) as unknown as IPermissions;
+    }
+
+    const discordUser = await DiscordUser.findOne({ discordId });
+    if (discordUser?.permissions) {
+        for (const key of Object.keys(empty) as (keyof IPermissions)[]) {
+            if ((discordUser.permissions as any)[key]) empty[key] = true;
+        }
+    }
+
+    for (const role of character.roles as any[]) {
+        if (role.permissions) {
+            for (const key of Object.keys(empty) as (keyof IPermissions)[]) {
+                if (role.permissions[key]) empty[key] = true;
+            }
+        }
+    }
+
+    return empty;
 }
 
 router.get('/discord', passport.authenticate('discord'));
@@ -43,19 +92,33 @@ router.get(
 router.get('/session', async (req: Request, res: Response) => {
     if (!req.isAuthenticated()) {
         return res.status(401).json({
-            message:         'Brak aktywnej sesji',
+            message: 'Brak aktywnej sesji',
             isAuthenticated: false,
         });
     }
 
     const user = req.user as any;
     const authorized = await hasRequiredRole(user.id);
+    const sessionCharacter = (req.session as any).activeCharacter ?? null;
+
+    let activeCharacter = sessionCharacter;
+
+    if (sessionCharacter?._id) {
+        const freshPermissions = await recalculatePermissions(user.id, sessionCharacter._id);
+        if (freshPermissions) {
+            activeCharacter = { ...sessionCharacter, permissions: freshPermissions };
+            (req.session as any).activeCharacter = activeCharacter;
+        } else {
+            (req.session as any).activeCharacter = null;
+            activeCharacter = null;
+        }
+    }
 
     res.json({
         user,
         isAuthenticated: true,
         authorized,
-        activeCharacter: (req.session as any).activeCharacter ?? null,
+        activeCharacter,
     });
 });
 

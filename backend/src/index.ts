@@ -6,12 +6,15 @@ import MongoStore from 'connect-mongo';
 import passport from 'passport';
 import { Strategy as DiscordStrategy } from 'passport-discord';
 import { connectDatabase } from './config/database';
+import { Role } from './models/Role';
 
 // --- Import Routes --- //
 import auth from './routes/auth';
 import characters from './routes/characters';
 import './models/DiscordUser';
 import roles from './routes/roles';
+import businesses from './routes/businesses';
+import citationParameters from './routes/citationParameters';
 
 dotenv.config();
 
@@ -22,6 +25,26 @@ const requiredEnvVars = [
     'DISCORD_CLIENT_SECRET',
     'DISCORD_CALLBACK_URL'
 ];
+
+async function migrateRoles() {
+    await Role.updateMany(
+        { 'permissions.hasBusinessesAccess': { $exists: false } },
+        {
+            $set: {
+                'permissions.hasBusinessesAccess': false,
+                'permissions.canAddBusiness': false,
+                'permissions.canEditBusiness': false,
+                'permissions.canDeleteBusiness': false,
+                'permissions.canAddBusinessReport': false,
+                'permissions.canDeleteBusinessReport': false,
+                'permissions.canAddBusinessCitation': false,
+                'permissions.canDeleteBusinessCitation': false,
+                'permissions.canAddBusinessNotes': false,
+                'permissions.canEditCitationParameters': false,
+            }
+        }
+    )
+}
 
 for (const envVar of requiredEnvVars) {
     if (!process.env[envVar]) {
@@ -74,6 +97,8 @@ app.use(passport.session());
 app.use('/auth', auth);
 app.use('/characters', characters);
 app.use('/roles', roles);
+app.use('/businesses', businesses);
+app.use('/citation-parameters', citationParameters);
 
 
 const PORT = process.env.PORT || 5000;
@@ -81,6 +106,7 @@ const PORT = process.env.PORT || 5000;
 const startServer = async () => {
     try {
         await connectDatabase();
+        await migrateRoles();
         app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}`));
     } catch (error) {
         console.error('❌ Failed to start server:', error);
@@ -88,4 +114,4 @@ const startServer = async () => {
     }
 };
 
-startServer();
+void startServer();

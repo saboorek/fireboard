@@ -3,7 +3,6 @@ import { SidebarItem } from './SidebarItem.tsx';
 import { SidebarSection } from './SidebarSection.tsx';
 import { sidebarItems } from '../../../data/sidebarData.ts';
 import { useCharacter } from '../../../context/CharacterContext.tsx';
-import type { Permissions } from '../../../types/permissions.ts';
 import type { SidebarChildItem, SidebarItemDef } from '../../../data/sidebarData.ts';
 
 interface Props {
@@ -12,20 +11,44 @@ interface Props {
 
 export const Sidebar = ({ isOpen }: Props) => {
     const { selectedCharacter } = useCharacter();
-    const permissions = selectedCharacter?.permissions;
+    const perms = selectedCharacter?.permissions as any;
     const characterRoles = (selectedCharacter?.roles as any[]) ?? [];
 
-    const isVisible = (item: SidebarItemDef | SidebarChildItem): boolean => {
-        if (item.permission) {
-            return permissions?.[item.permission as keyof Permissions] ?? false;
+    const hasPerm = (permission: string): boolean => {
+        if (!perms) return false;
+        if (typeof perms[permission] === 'boolean') return perms[permission];
+        for (const category of Object.values(perms)) {
+            if (typeof category === 'object' && category !== null) {
+                if ((category as any)[permission] === true) return true;
+            }
         }
-        if (item.roles && item.roles.length > 0) {
-            return item.roles.some(r =>
-                characterRoles.some((role: any) => role.name === r)
-            );
+        return false;
+    };
+
+    const hasRole = (roles: string[]): boolean => {
+        return roles.some(r => characterRoles.some((role: any) => role.name === r));
+    };
+
+    const isItemVisible = (item: SidebarChildItem | SidebarItemDef): boolean => {
+        if (item.permission) return hasPerm(item.permission);
+        if (item.roles && item.roles.length > 0) return hasRole(item.roles);
+        return true;
+    };
+
+    const isSectionVisible = (item: SidebarItemDef): boolean => {
+        if (!isItemVisible(item)) return false;
+        if (item.children) {
+            return item.children.some(child => isChildVisible(child));
         }
         return true;
     };
+
+    const isChildVisible = (child: SidebarChildItem): boolean => {
+        if (child.permission) return hasPerm(child.permission);
+        if (child.roles && child.roles.length > 0) return hasRole(child.roles);
+        return true;
+    };
+
 
     return (
         <aside className={`flex flex-col h-screen bg-gray-900 border-r border-gray-700/50 shrink-0 transition-all duration-300 overflow-hidden ${
@@ -40,9 +63,8 @@ export const Sidebar = ({ isOpen }: Props) => {
             <nav className="flex-1 overflow-y-auto px-3 py-4">
                 <ul className="space-y-1">
                     {sidebarItems.map((item, idx) => {
-                        if (!isVisible(item)) return null;
-
                         if (item.type === 'item') {
+                            if (!isItemVisible(item)) return null;
                             return (
                                 <SidebarItem
                                     key={idx}
@@ -54,7 +76,9 @@ export const Sidebar = ({ isOpen }: Props) => {
                         }
 
                         if (item.type === 'section' && item.children) {
-                            const visibleChildren = item.children.filter(c => isVisible(c));
+                            if (!isSectionVisible(item)) return null;
+
+                            const visibleChildren = item.children.filter(c => isChildVisible(c));
                             if (visibleChildren.length === 0) return null;
 
                             return (

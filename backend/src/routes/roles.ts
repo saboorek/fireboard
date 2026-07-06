@@ -56,7 +56,7 @@ router.put('/:id', isAuthenticated, requirePermission('canManagePermission'), as
         const role = await Role.findByIdAndUpdate(
             req.params.id,  // ← usunięty podwójny przecinek
             { name, permissions },
-            { new: true, runValidators: true }
+            { returnDocument: 'after', runValidators: true }
         );
 
         if (!role) return res.status(404).json({ message: 'Rola nie została znaleziona' });
