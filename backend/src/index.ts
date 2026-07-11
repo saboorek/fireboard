@@ -58,7 +58,7 @@ const isProduction = process.env.NODE_ENV === 'production';
 app.use(express.json());
 
 app.use(cors({
-    origin: isProduction ? process.env.CLIENT_URL : 'http://localhost:5173',
+    origin: isProduction ? process.env.FRONTEND_URL : 'http://localhost:5173',
     credentials: true,
 }));
 
@@ -94,11 +94,11 @@ passport.use(new DiscordStrategy(
 app.use(passport.initialize());
 app.use(passport.session());
 
-app.use('/auth', auth);
-app.use('/characters', characters);
-app.use('/roles', roles);
-app.use('/businesses', businesses);
-app.use('/citation-parameters', citationParameters);
+app.use('/api/auth', auth);
+app.use('/api/characters', characters);
+app.use('/api/roles', roles);
+app.use('/api/businesses', businesses);
+app.use('/api/citation-parameters', citationParameters);
 
 
 const PORT = process.env.PORT || 5000;
@@ -107,7 +107,7 @@ const startServer = async () => {
     try {
         await connectDatabase();
         await migrateRoles();
-        app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}`));
+        app.listen(PORT, () => console.log(`🚀 Server running on ${isProduction ? process.env.FRONTEND_URL : `http://localhost:${PORT}`}`));
     } catch (error) {
         console.error('❌ Failed to start server:', error);
         process.exit(1);

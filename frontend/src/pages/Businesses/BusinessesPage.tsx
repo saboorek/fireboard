@@ -64,7 +64,6 @@ export const BusinessesPage = () => {
 
     useEffect(() => { fetchBusinesses(); }, []);
 
-    // Reset strony przy zmianie filtrów / wyszukiwania
     useEffect(() => { setPage(1); }, [search, filter]);
 
     const sortedAndFiltered = useMemo(() => {

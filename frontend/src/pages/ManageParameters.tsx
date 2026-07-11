@@ -21,13 +21,11 @@ export const ManageParameters = () => {
     const [params, setParams] = useState<CitationParam[]>([]);
     const [loadingParams, setLoadingParams] = useState(false);
 
-    // Stan formularza dodawania
     const [addDesc, setAddDesc] = useState('');
     const [addAmount, setAddAmount] = useState('');
     const [adding, setAdding] = useState(false);
     const [showAddForm, setShowAddForm] = useState(false);
 
-    // Stan edycji inline
     const [editId, setEditId] = useState<string | null>(null);
     const [editDesc, setEditDesc] = useState('');
     const [editAmount, setEditAmount] = useState('');

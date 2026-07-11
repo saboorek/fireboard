@@ -18,6 +18,51 @@ router.get('/', isAuthenticated, requirePermission('hasBusinessesAccess'), async
     }
 });
 
+router.get('/dashboard-stats', isAuthenticated, requirePermission('hasBusinessesAccess'), async (_req: Request, res: Response) => {
+    try {
+        const now = new Date();
+
+        const businesses = await Business.find({}, { type: 1, lastInspectionDate: 1 }).lean();
+
+        const typeCount: Record<string, number> = {};
+        let expired = 0;
+        let within7 = 0;
+        let within14 = 0;
+
+        for (const b of businesses) {
+            typeCount[b.type] = (typeCount[b.type] ?? 0) + 1;
+
+            if (!b.lastInspectionDate) {
+                expired++;
+            } else {
+                const next = new Date(b.lastInspectionDate);
+                next.setDate(next.getDate() + 60);
+                const daysLeft = Math.ceil((next.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                if (daysLeft < 0) expired++;
+                else if (daysLeft <= 7) within7++;
+                else if (daysLeft <= 14) within14++;
+            }
+        }
+
+        const citations = await Citation.find({}, { citationAmount: 1 }).lean();
+        const citationCount = citations.length;
+        const citationTotal = citations.reduce((sum, c) => sum + (c.citationAmount ?? 0), 0);
+
+        res.json({
+            total: businesses.length,
+            typeCount,
+            expired,
+            within7,
+            within14,
+            citationCount,
+            citationTotal,
+        });
+    } catch (err) {
+        console.error('[GET /businesses/dashboard-stats]', err);
+        res.status(500).json({ message: 'Błąd serwera' });
+    }
+});
+
 router.get('/:id', isAuthenticated, requirePermission('hasBusinessesAccess'), async (req: Request, res: Response) => {
     try {
         const business = await Business.findById(req.params.id);
@@ -58,8 +103,8 @@ router.post('/', isAuthenticated, requirePermission('canAddBusiness'), async (re
             fields: [
                 { name: 'ID', value: `#${business.customId}`, inline: true },
                 { name: 'Nazwa', value: business.name, inline: true },
-                { name: 'Typ', value: business.type, inline: true },
-                { name: 'Dodany przez', value: `<@${user.id}>`, inline: true },
+                { name: 'Typ', value: business.type, inline: false },
+                { name: 'Dodany przez', value: `<@${user.id}>`, inline: false },
             ],
             timestamp: new Date().toISOString(),
         });
@@ -98,7 +143,7 @@ router.put('/:id', isAuthenticated, requirePermission('canEditBusiness'), async 
             fields: [
                 { name: 'ID', value: `#${business.customId}`, inline: true },
                 { name: 'Nazwa', value: business.name, inline: true },
-                { name: 'Edytowany przez', value: `<@${user.id}>`, inline: true },
+                { name: 'Edytowany przez', value: `<@${user.id}>`, inline: false },
             ],
             timestamp: new Date().toISOString(),
         });
@@ -122,7 +167,7 @@ router.delete('/:id', isAuthenticated, requirePermission('canDeleteBusiness'), a
             fields: [
                 { name: 'ID', value: `#${business.customId}`, inline: true },
                 { name: 'Nazwa', value: business.name, inline: true },
-                { name: 'Usunięty przez', value: `<@${user.id}>`, inline: true },
+                { name: 'Usunięty przez', value: `<@${user.id}>`, inline: false },
             ],
             timestamp: new Date().toISOString(),
         });
@@ -221,16 +266,16 @@ router.post('/:id/reports', isAuthenticated, requirePermission('canAddBusinessRe
         });
 
         const user = req.user as any;
-        sendDiscordMessage(process.env.DISCORD_CHANNEL_ADMIN_LOGS!, {
+        sendDiscordMessage(process.env.DISCORD_CHANNEL_REPORTS!, {
             title: '📋 Nowy raport z kontroli',
             color: 0x3498DB,
             fields: [
                 { name: 'Biznes', value: `${business.name} (#${business.customId})`, inline: true },
                 { name: 'Raport ID', value: report.reportId, inline: true },
-                { name: 'Inspektor', value: inspector.trim(), inline: true },
+                { name: 'Inspektor', value: inspector.trim(), inline: false },
                 { name: 'Wynik', value: controlPassed ? '✅ Zaliczona' : '❌ Niezaliczona', inline: true },
                 { name: 'Typ', value: controlType, inline: true },
-                { name: 'Dodany przez', value: `<@${user.id}>`, inline: true },
+                { name: 'Dodany przez', value: `<@${user.id}>`, inline: false },
             ],
             timestamp: new Date().toISOString(),
         });
@@ -251,7 +296,6 @@ router.delete('/:id/reports/:reportId', isAuthenticated, requirePermission('canD
 
         if (!report) return res.status(404).json({ message: 'Raport nie znaleziony' });
 
-        // Zaktualizuj lastInspectionDate na podstawie najnowszego pozostałego raportu
         const latest = await Report.findOne({ businessId: req.params.id }).sort({ controlDate: -1 });
         await Business.findByIdAndUpdate(req.params.id, {
             lastInspectionDate: latest ? latest.controlDate : null,
@@ -297,15 +341,15 @@ router.post('/:id/citations', isAuthenticated, requirePermission('canAddBusiness
         await citation.save();
 
         const user = req.user as any;
-        sendDiscordMessage(process.env.DISCORD_CHANNEL_ADMIN_LOGS!, {
+        sendDiscordMessage(process.env.DISCORD_CHANNEL_CITATIONS!, {
             title: '⚖️ Nowa cytacja',
             color: 0xF39C12,
             fields: [
                 { name: 'Biznes', value: `${business.name} (#${business.customId})`, inline: true },
                 { name: 'Cytacja ID', value: citation.citationId, inline: true },
-                { name: 'Inspektor', value: inspector.trim(), inline: true },
-                { name: 'Kwota', value: `$${citationAmount}`, inline: true },
-                { name: 'Dodana przez', value: `<@${user.id}>`, inline: true },
+                { name: 'Inspektor', value: inspector.trim(), inline: false },
+                { name: 'Kwota', value: `$${citationAmount}`, inline: false },
+                { name: 'Dodana przez', value: `<@${user.id}>`, inline: false },
             ],
             timestamp: new Date().toISOString(),
         });
@@ -331,5 +375,4 @@ router.delete('/:id/citations/:citationId', isAuthenticated, requirePermission('
         res.status(500).json({ message: 'Błąd serwera' });
     }
 });
-
 export default router;

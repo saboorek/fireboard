@@ -43,7 +43,6 @@ export const BusinessDetail = () => {
     const [citations, setCitations] = useState<Citation[]>([]);
     const [citationsLoading, setCitationsLoading] = useState(true);
 
-    // Modal edycji biznesu
     const [editOpen, setEditOpen] = useState(false);
     const [editType, setEditType] = useState('');
     const [editName, setEditName] = useState('');
@@ -53,7 +52,6 @@ export const BusinessDetail = () => {
     const [editWebsite, setEditWebsite] = useState('');
     const [saving, setSaving] = useState(false);
 
-    // Modale
     const [reportOpen, setReportOpen] = useState(false);
     const [citationOpen, setCitationOpen] = useState(false);
 

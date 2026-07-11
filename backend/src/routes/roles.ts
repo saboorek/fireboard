@@ -38,8 +38,8 @@ router.post('/', isAuthenticated, requirePermission('canManagePermission'), asyn
             title: '🛡️ Nowa rola została utworzona',
             color: 0x57F287,
             fields: [
-                { name: 'Nazwa roli', value: role.name, inline: true },
-                { name: 'Utworzona przez', value: `<@${user.id}>`, inline: true },
+                { name: 'Nazwa roli', value: role.name, inline: false },
+                { name: 'Utworzona przez', value: `<@${user.id}>`, inline: false },
             ],
             timestamp: new Date().toISOString(),
         });
@@ -54,7 +54,7 @@ router.put('/:id', isAuthenticated, requirePermission('canManagePermission'), as
     try {
         const { name, permissions } = req.body;
         const role = await Role.findByIdAndUpdate(
-            req.params.id,  // ← usunięty podwójny przecinek
+            req.params.id,
             { name, permissions },
             { returnDocument: 'after', runValidators: true }
         );
@@ -66,8 +66,8 @@ router.put('/:id', isAuthenticated, requirePermission('canManagePermission'), as
             title: '✏️ Rola została zaktualizowana',
             color: 0xF39C12,
             fields: [
-                { name: 'Nazwa roli', value: role.name, inline: true },
-                { name: 'Edytowana przez', value: `<@${user.id}>`, inline: true },
+                { name: 'Nazwa roli', value: role.name, inline: false },
+                { name: 'Edytowana przez', value: `<@${user.id}>`, inline: false },
             ],
             timestamp: new Date().toISOString(),
         });
@@ -95,8 +95,8 @@ router.delete('/:id', isAuthenticated, requirePermission('canManagePermission'),
             title: '🗑️ Rola została usunięta',
             color: 0x95A5A6,
             fields: [
-                { name: 'Nazwa roli', value: role.name, inline: true },
-                { name: 'Usunięta przez', value: `<@${user.id}>`, inline: true },
+                { name: 'Nazwa roli', value: role.name, inline: false },
+                { name: 'Usunięta przez', value: `<@${user.id}>`, inline: false },
             ],
             timestamp: new Date().toISOString(),
         });
@@ -162,8 +162,8 @@ router.put('/discord-users/:discordId', isAuthenticated, requirePermission('canM
             title: '🔑 Uprawnienia konta Discord zaktualizowane',
             color: 0xE74C3C,
             fields: [
-                { name: 'Konto', value: `<@${req.params.discordId}>`, inline: true },
-                { name: 'Zmienione przez', value: `<@${user.id}>`, inline: true },
+                { name: 'Konto', value: `<@${req.params.discordId}>`, inline: false },
+                { name: 'Zmienione przez', value: `<@${user.id}>`, inline: false },
             ],
             timestamp: new Date().toISOString(),
         });

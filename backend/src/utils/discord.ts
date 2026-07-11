@@ -1,9 +1,9 @@
 interface Embed {
-    title:      string;
-    color:      number;
-    fields:     { name: string; value: string; inline?: boolean }[];
+    title: string;
+    color: number;
+    fields: { name: string; value: string; inline?: boolean }[];
     timestamp?: string;
-    footer?:    { text: string };
+    footer?: { text: string };
 }
 
 export async function sendDiscordMessage(channelId: string, embed: Embed): Promise<void> {

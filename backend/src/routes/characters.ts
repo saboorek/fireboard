@@ -10,7 +10,6 @@ import { isDeveloper } from '../config/developers';
 
 const router = Router();
 
-// Buduje pusty obiekt uprawnień na podstawie kluczy z bazy (pierwsza rola lub fallback)
 async function getEmptyPermissions(): Promise<IPermissions> {
     const sampleRole = await Role.findOne().lean();
     if (sampleRole?.permissions) {
@@ -30,8 +29,11 @@ async function getEmptyPermissions(): Promise<IPermissions> {
         canEditBusiness: false,
         canDeleteBusiness: false,
         canAddBusinessReport: false,
+        canDeleteBusinessReport: false,
         canAddBusinessCitation: false,
+        canDeleteBusinessCitation: false,
         canAddBusinessNotes: false,
+        canEditCitationParameters: false,
     };
 }
 
@@ -42,7 +44,6 @@ async function getFullPermissions(): Promise<IPermissions> {
     ) as unknown as IPermissions;
 }
 
-// Pobierz postacie zalogowanego użytkownika
 router.get('/', isAuthenticated, async (req: Request, res: Response) => {
     try {
         const user = req.user as any;
@@ -54,7 +55,6 @@ router.get('/', isAuthenticated, async (req: Request, res: Response) => {
     }
 });
 
-// Pobierz wszystkie postacie (tylko dla admina)
 router.get('/all', isAuthenticated, requirePermission('canEditCharacter'), async (_req: Request, res: Response) => {
     try {
         const characters = await Character.find().populate('roles').sort({ createdAt: -1 });
@@ -65,7 +65,6 @@ router.get('/all', isAuthenticated, requirePermission('canEditCharacter'), async
     }
 });
 
-// Dodaj nową postać
 router.post('/', isAuthenticated, async (req: Request, res: Response) => {
     try {
         const user = req.user as any;
@@ -102,7 +101,6 @@ router.post('/', isAuthenticated, async (req: Request, res: Response) => {
     }
 });
 
-// Wybierz aktywną postać — zapisuje do sesji
 router.post('/select', isAuthenticated, async (req: Request, res: Response) => {
     try {
         const user = req.user as any;
