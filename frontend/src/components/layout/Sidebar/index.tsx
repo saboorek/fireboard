@@ -99,7 +99,14 @@ export const Sidebar = ({ isOpen }: Props) => {
             {/* Stopka */}
             <div className="border-t border-gray-700/50 px-4 py-3">
                 <div className="relative group flex justify-center">
-                    <p className="text-xs text-gray-500 text-center cursor-default">LSCoFD Fireboard 2.0</p>
+                    <a
+                        href="https://github.com/saboorek/fireboard"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-gray-500 text-center cursor-pointer hover:text-gray-300 transition-colors"
+                    >
+                        LSCoFD Fireboard 2.0
+                    </a>
                     <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
                         <CommitInfo />
                     </div>
