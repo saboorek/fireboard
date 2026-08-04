@@ -90,9 +90,16 @@ export const BusinessNotes = ({ businessId, notes, canEdit, canAddNote, onRefres
                     ) : (
                         <>
                             {paged.map(note => (
-                                <div key={note._id} className="bg-gray-800 rounded-lg p-3">
+                                <div
+                                    key={note._id}
+                                    className={`rounded-lg p-3 ${
+                                        note.author === 'system'
+                                            ? 'bg-red-950 border border-red-700'
+                                            : 'bg-gray-800'
+                                    }`}
+                                >
                                     <div className="flex items-start justify-between gap-2">
-                                        <p className="text-white text-sm">{note.content}</p>
+                                        <p className="text-white text-sm whitespace-pre-wrap">{note.content}</p>
                                         {canEdit && (
                                             <button
                                                 onClick={() => handleDelete(note._id)}

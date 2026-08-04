@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { Business } from '../models/Business';
 import { Report } from '../models/Report';
 import { Citation } from '../models/Citation';
+import { NOV } from '../models/NOV';
 import { isAuthenticated } from '../middleware/auth';
 import { requirePermission } from '../middleware/permissions';
 import { sendDiscordMessage } from '../utils/discord';
@@ -263,6 +264,8 @@ router.post('/:id/reports', isAuthenticated, requirePermission('canAddBusinessRe
 
         await Business.findByIdAndUpdate(req.params.id, {
             lastInspectionDate: new Date(controlDate),
+            lastControlPassed: Boolean(controlPassed),
+            ...(Boolean(controlPassed) && business.activeNov ? { activeNov: null } : {}),
         });
 
         const user = req.user as any;
@@ -299,12 +302,13 @@ router.delete('/:id/reports/:reportId', isAuthenticated, requirePermission('canD
         const latest = await Report.findOne({ businessId: req.params.id }).sort({ controlDate: -1 });
         await Business.findByIdAndUpdate(req.params.id, {
             lastInspectionDate: latest ? latest.controlDate : null,
+            lastControlPassed: latest ? latest.controlPassed : null,
         });
 
         res.json({ message: 'Raport usunięty' });
     } catch (err) {
         console.error('[DELETE /businesses/:id/reports/:reportId]', err);
-        res.status(500).json({ message: 'Błąd serwera' });
+        res.status(500).json({ message: 'Błąd serwera' });``
     }
 });
 
@@ -372,6 +376,57 @@ router.delete('/:id/citations/:citationId', isAuthenticated, requirePermission('
         res.json({ message: 'Cytacja usunięta' });
     } catch (err) {
         console.error('[DELETE /businesses/:id/citations/:citationId]', err);
+        res.status(500).json({ message: 'Błąd serwera' });
+    }
+});
+
+router.post('/:id/nov', isAuthenticated, requirePermission('canAddBusinessReport'), async (req: Request, res: Response) => {
+    try {
+        const business = await Business.findById(req.params.id);
+        if (!business) return res.status(404).json({ message: 'Biznes nie został znaleziony' });
+
+        const { reportMongoId, reportRef, deadlineDays, violations, issuedBy } = req.body;
+
+        if(!reportMongoId || !reportRef || !deadlineDays || !violations || !issuedBy) {
+            return res.status(400).json({ message: 'Wypełnij wszystkie wymagane pola' });
+        }
+
+        const issuedAt = new Date();
+        const deadlineDate = new Date(issuedAt);
+        deadlineDate.setDate(deadlineDate.getDate() + Number(deadlineDays));
+
+        const nov = new NOV({
+            businessId: business._id,
+            reportMongoId,
+            reportRef,
+            issuedAt,
+            deadlineDays: Number(deadlineDays),
+            deadlineDate,
+            violations,
+            issuedBy,
+        });
+        await nov.save();
+
+        await Report.findByIdAndUpdate(reportMongoId, { novIssued: true });
+
+        await Business.findByIdAndUpdate(req.params.id, {
+            activeNov: { deadlineDate, deadlineDays: Number(deadlineDays) },
+        });
+
+        const noteContent = `⚠️ Notice Of Violation wystawiony przez ${issuedBy}.\nTermin do kontroli poprawkowej: ${deadlineDays} dni (do ${deadlineDate.toLocaleDateString('pl-PL')})\n\nNaruszenia:\n${(violations as string[]).map(v => `• ${v},`).join('\n')}`;
+        await Business.findByIdAndUpdate(req.params.id, {
+            $push: {
+                notes: {
+                    content: noteContent,
+                    author: 'system',
+                    authorId: 'system',
+                    createdAt: new Date(),
+                }
+            }
+        });
+        res.status(201).json(nov);
+    } catch (err) {
+        console.error('[POST /businesses/:id/nov]', err);
         res.status(500).json({ message: 'Błąd serwera' });
     }
 });

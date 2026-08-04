@@ -16,6 +16,7 @@ export interface Report {
     controlDescription: string;
     alarmServices: boolean;
     controlType: 'Planowana' | 'Nieplanowana';
+    novIssued?: boolean;
 }
 
 export interface Business {
@@ -29,6 +30,19 @@ export interface Business {
     website?: string | null;
     notes: Note[];
     lastInspectionDate?: string | null;
+    lastControlPassed?: boolean | null;
+    activeNov?: {
+        deadlineDate: string;
+        deadlineDays: 7 | 14;
+    } | null;
+}
+
+export interface AddNovPayload {
+    reportMongoId: string;
+    reportRef: string;
+    deadlineDays: 7 | 14;
+    violations: string[];
+    issuedBy: string;
 }
 
 export interface AddReportPayload {
@@ -120,5 +134,13 @@ export const businessService = {
 
     deleteCitation: (id: string, citationId: string) =>
         fetch(`${base(id)}/citations/${citationId}`, { method: 'DELETE', credentials: 'include' }),
+
+    addNov: (id: string, payload: AddNovPayload) =>
+        fetch(`${base(id)}/nov`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        }),
 };
 
