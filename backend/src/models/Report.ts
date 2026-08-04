@@ -9,6 +9,7 @@ export interface IReport extends Document {
     controlDate: Date;
     inspector: string;
     controlPassed: boolean;
+    novIssued?: boolean;
     controlDescription: string;
     alarmServices: boolean;
     controlType: ControlType;
@@ -21,6 +22,7 @@ const ReportSchema = new Schema<IReport>({
     controlDate: { type: Date, default: Date.now },
     inspector: { type: String, required: true },
     controlPassed: { type: Boolean, default: false },
+    novIssued: { type: Boolean, default: false },
     controlDescription: { type: String, required: true },
     alarmServices: { type: Boolean, default: false },
     controlType: { type: String, enum: ['Planowana', 'Nieplanowana'], required: true },

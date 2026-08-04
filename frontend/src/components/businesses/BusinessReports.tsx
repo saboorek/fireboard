@@ -3,8 +3,8 @@ import { toast } from 'sonner';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
     faFileLines, faCheckCircle, faTimesCircle,
-    faBell, faTrash, faXmark, faUser, faCalendar,
-    faClipboardList,
+    faBell, faBellSlash, faTrash, faXmark, faUser, faCalendar,
+    faClipboardList, faFileShield,
 } from '@fortawesome/free-solid-svg-icons';
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react';
 import { Pagination } from '../ui/Pagination';
@@ -75,20 +75,43 @@ export const BusinessReports = ({ businessId, reports, loading, canDelete, onRef
                                     className="w-full bg-gray-800 hover:bg-gray-700 rounded-lg px-4 py-3 text-left transition-colors"
                                 >
                                     <div className="flex items-center justify-between gap-3">
-                                        <div className="flex items-center gap-3 min-w-0">
-                                            <span className="text-xs font-mono text-gray-400 shrink-0">
-                                                {report.reportId}
+                                        {/* Lewa strona: ID raportu */}
+                                        <span className="text-xs font-mono text-gray-400 shrink-0">
+                                            {report.reportId}
+                                        </span>
+
+                                        {/* Prawa strona: ikony + data + inspektor */}
+                                        <div className="flex items-center gap-3 shrink-0">
+                                            {/* Ikona wyniku kontroli */}
+                                            <span
+                                                title={report.controlPassed ? 'Zaliczona' : 'Niezaliczona'}
+                                                className={report.controlPassed ? 'text-green-400' : 'text-red-400'}
+                                            >
+                                                <FontAwesomeIcon icon={report.controlPassed ? faCheckCircle : faTimesCircle} />
                                             </span>
-                                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${report.controlPassed ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'}`}>
-                                                <FontAwesomeIcon icon={report.controlPassed ? faCheckCircle : faTimesCircle} className="mr-1" />
-                                                {report.controlPassed ? 'Zaliczona' : 'Niezaliczona'}
+
+                                            {/* Ikona alarmu */}
+                                            <span
+                                                title={report.alarmServices ? 'Serwis Alarmu: Tak' : 'Serwis Alarmu: Nie'}
+                                                className={report.alarmServices ? 'text-green-400' : 'text-red-400'}
+                                            >
+                                                <FontAwesomeIcon icon={report.alarmServices ? faBell : faBellSlash} />
                                             </span>
-                                        </div>
-                                        <div className="text-right shrink-0">
-                                            <p className="text-gray-400 text-xs">
-                                                {new Date(report.controlDate).toLocaleString('pl-PL', { dateStyle: 'short', timeStyle: 'short' })}
-                                            </p>
-                                            <p className="text-gray-500 text-xs">{report.inspector}</p>
+
+                                            {/* Ikona NOV — tylko gdy wystawiony */}
+                                            {report.novIssued && (
+                                                <span title="NOV wystawiony" className="text-red-400">
+                                                    <FontAwesomeIcon icon={faFileShield} />
+                                                </span>
+                                            )}
+
+                                            {/* Data i inspektor */}
+                                            <div className="text-right">
+                                                <p className="text-gray-400 text-xs">
+                                                    {new Date(report.controlDate).toLocaleString('pl-PL', { dateStyle: 'short', timeStyle: 'short' })}
+                                                </p>
+                                                <p className="text-gray-500 text-xs">{report.inspector}</p>
+                                            </div>
                                         </div>
                                     </div>
                                 </button>
@@ -178,6 +201,17 @@ export const BusinessReports = ({ businessId, reports, loading, canDelete, onRef
                                             </span>
                                         </div>
                                     </div>
+                                    {selected.novIssued && (
+                                        <div className="flex items-center gap-3">
+                                            <FontAwesomeIcon icon={faFileShield} className="text-red-400 w-4 shrink-0" />
+                                            <div>
+                                                <p className="text-gray-500 text-xs">Notice of Violation</p>
+                                                <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-red-900 text-red-300">
+                                                    NOV wystawiony
+                                                </span>
+                                            </div>
+                                        </div>
+                                    )}
 
                                     {/* Opis */}
                                     <div className="border-t border-gray-700 pt-3 mt-1">

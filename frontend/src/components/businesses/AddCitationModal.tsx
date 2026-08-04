@@ -1,10 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faXmark } from '@fortawesome/free-solid-svg-icons';
 import { businessService } from '../../services/businessService';
 import type { AddCitationPayload } from '../../services/businessService';
+import config from '../../utils/config';
+
+interface CitationParam {
+    _id: string;
+    description: string;
+    amount: number;
+}
 
 interface Props {
     open: boolean;
@@ -19,16 +26,33 @@ export const AddCitationModal = ({ open, onClose, businessId, inspectorName, onS
 
     const [citationDate, setCitationDate] = useState(now.toISOString().split('T')[0]);
     const [citationTime, setCitationTime] = useState(now.toTimeString().slice(0, 5));
-    const [citationAmount, setCitationAmount] = useState('');
     const [citationReason, setCitationReason] = useState('');
     const [saving, setSaving] = useState(false);
+
+    const [selectedParams, setSelectedParams] = useState<CitationParam[]>([]);
+    const [citationParams, setCitationParams] = useState<CitationParam[]>([]);
+    const [citationParamsLoading, setCitationParamsLoading] = useState(false);
+
+    // Kwota liczona automatycznie z zaznaczonych pozycji
+    const citationAmount = selectedParams.reduce((sum, p) => sum + p.amount, 0);
+
+    useEffect(() => {
+        if (open) {
+            setCitationParamsLoading(true);
+            fetch(`${config.URL}/citation-parameters`, { credentials: 'include' })
+                .then(r => r.json())
+                .then(data => setCitationParams(data))
+                .catch(() => toast.error('Nie udało się pobrać listy naruszeń'))
+                .finally(() => setCitationParamsLoading(false));
+        }
+    }, [open]);
 
     const resetForm = () => {
         const n = new Date();
         setCitationDate(n.toISOString().split('T')[0]);
         setCitationTime(n.toTimeString().slice(0, 5));
-        setCitationAmount('');
         setCitationReason('');
+        setSelectedParams([]);
     };
 
     const handleClose = () => {
@@ -38,13 +62,20 @@ export const AddCitationModal = ({ open, onClose, businessId, inspectorName, onS
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        if (selectedParams.length === 0) {
+            toast.error('Zaznacz przynajmniej jedno naruszenie');
+            return;
+        }
         setSaving(true);
         try {
             const payload: AddCitationPayload = {
                 inspector: inspectorName,
                 citationDate: new Date(`${citationDate}T${citationTime}`).toISOString(),
-                citationAmount: Number(citationAmount),
-                citationReason,
+                citationAmount,
+                citationReason: [
+                    selectedParams.map(p => `• ${p.description}`).join('\n'),
+                    citationReason.trim(),
+                ].filter(Boolean).join('\n\n'),
             };
 
             const res = await businessService.addCitation(businessId, payload);
@@ -69,7 +100,7 @@ export const AddCitationModal = ({ open, onClose, businessId, inspectorName, onS
         <Dialog open={open} onClose={handleClose} className="relative z-50">
             <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" aria-hidden="true" />
             <div className="fixed inset-0 flex items-center justify-center p-4">
-                <DialogPanel className="bg-gray-900 rounded-xl shadow-2xl w-full max-w-lg p-6">
+                <DialogPanel className="bg-gray-900 rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6">
                     <div className="flex items-center justify-between mb-5">
                         <DialogTitle className="text-xl font-bold text-white">Nowa cytacja</DialogTitle>
                         <button onClick={handleClose} className="text-gray-400 hover:text-white">
@@ -112,29 +143,66 @@ export const AddCitationModal = ({ open, onClose, businessId, inspectorName, onS
                             </div>
                         </div>
 
-                        {/* Kwota */}
+                        {/* Naruszenia — multiselect */}
                         <div>
-                            <label className="text-gray-300 text-sm mb-1 block">Kwota cytacji ($)</label>
+                            <p className="text-gray-300 text-sm mb-1">
+                                Naruszenia
+                                {selectedParams.length > 0 && (
+                                    <span className="ml-1 text-yellow-400">({selectedParams.length} zaznaczonych)</span>
+                                )}
+                            </p>
+                            {citationParamsLoading ? (
+                                <p className="text-gray-500 text-xs">Ładowanie...</p>
+                            ) : citationParams.length === 0 ? (
+                                <p className="text-gray-500 text-xs">Brak zdefiniowanych naruszeń</p>
+                            ) : (
+                                <div className="flex flex-col gap-1 max-h-44 overflow-y-auto bg-gray-800 rounded-lg p-2">
+                                    {citationParams.map(param => (
+                                        <label
+                                            key={param._id}
+                                            className="flex items-center gap-2 cursor-pointer select-none hover:bg-gray-700 rounded px-2 py-1.5"
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedParams.some(p => p._id === param._id)}
+                                                onChange={e => {
+                                                    setSelectedParams(prev =>
+                                                        e.target.checked
+                                                            ? [...prev, param]
+                                                            : prev.filter(p => p._id !== param._id)
+                                                    );
+                                                }}
+                                                className="w-3.5 h-3.5 accent-yellow-500 shrink-0"
+                                            />
+                                            <span className="text-gray-300 text-xs">{param.description}</span>
+                                            <span className="text-gray-500 text-xs ml-auto shrink-0">${param.amount}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Kwota — wyliczona automatycznie */}
+                        <div>
+                            <label className="text-gray-300 text-sm mb-1 block">Łączna kwota cytacji ($)</label>
                             <input
                                 type="number"
-                                min="1"
                                 value={citationAmount}
-                                onChange={e => setCitationAmount(e.target.value)}
-                                placeholder="np. 500"
-                                required
-                                className="w-full bg-gray-800 text-white rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-yellow-600 text-sm"
+                                readOnly
+                                className="w-full bg-gray-800/60 text-gray-400 rounded-lg px-4 py-2 text-sm cursor-not-allowed"
                             />
                         </div>
 
-                        {/* Powód */}
+                        {/* Dodatkowy opis (opcjonalny) */}
                         <div>
-                            <label className="text-gray-300 text-sm mb-1 block">Opis cytacji</label>
+                            <label className="text-gray-300 text-sm mb-1 block">
+                                Dodatkowy opis <span className="text-gray-500">(opcjonalnie)</span>
+                            </label>
                             <textarea
                                 value={citationReason}
                                 onChange={e => setCitationReason(e.target.value)}
-                                placeholder="Podstawa prawna i opis naruszenia..."
-                                rows={4}
-                                required
+                                placeholder="Dodatkowe uwagi..."
+                                rows={3}
                                 className="w-full bg-gray-800 text-white rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-yellow-600 text-sm resize-none"
                             />
                         </div>
