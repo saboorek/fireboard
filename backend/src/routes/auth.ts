@@ -81,7 +81,17 @@ router.get(
             ? `${process.env.FRONTEND_URL}/login`
             : 'http://localhost:5173/login',
     }),
-    (_req: Request, res: Response) => {
+    async (req: Request, res: Response) => {
+        const user = req.user as any;
+
+        await Character.updateMany(
+            { discordId: user.id },
+            {
+                discordUsername: user.username ?? null,
+                discordAvatarHash: user.avatar ?? null,
+            }
+        );
+
         const redirectUrl = process.env.NODE_ENV === 'production'
             ? `${process.env.FRONTEND_URL}/dashboard`
             : 'http://localhost:5173/dashboard';
