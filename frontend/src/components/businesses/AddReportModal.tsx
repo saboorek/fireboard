@@ -9,8 +9,10 @@ import config from '../../utils/config';
 
 interface CitationParam {
     _id: string;
+    regCode: string;
     description: string;
     amount: number;
+    novDay: number;
 }
 
 interface Props {
@@ -119,6 +121,9 @@ export const AddReportModal = ({ open, onClose, businessId, inspectorName, onSuc
             setSaving(false);
         }
     };
+
+    // Tylko parametry z novDay > 0 wyświetlają się w multiselect NOV
+    const novCitationParams = citationParams.filter(p => p.novDay > 0);
 
     return (
         <Dialog open={open} onClose={handleClose} className="relative z-50">
@@ -251,7 +256,7 @@ export const AddReportModal = ({ open, onClose, businessId, inspectorName, onSuc
                                                 </div>
                                             </div>
 
-                                            {/* Naruszenia — multiselect */}
+                                            {/* Naruszenia — multiselect (tylko novDay > 0) */}
                                             <div>
                                                 <p className="text-gray-400 text-xs mb-2">
                                                     Naruszenia
@@ -261,11 +266,11 @@ export const AddReportModal = ({ open, onClose, businessId, inspectorName, onSuc
                                                 </p>
                                                 {citationParamsLoading ? (
                                                     <p className="text-gray-500 text-xs">Ładowanie...</p>
-                                                ) : citationParams.length === 0 ? (
+                                                ) : novCitationParams.length === 0 ? (
                                                     <p className="text-gray-500 text-xs">Brak zdefiniowanych naruszeń</p>
                                                 ) : (
                                                     <div className="flex flex-col gap-1 max-h-44 overflow-y-auto bg-gray-800 rounded-lg p-2">
-                                                        {citationParams.map(param => (
+                                                        {novCitationParams.map(param => (
                                                             <label
                                                                 key={param._id}
                                                                 className="flex items-center gap-2 cursor-pointer select-none hover:bg-gray-700 rounded px-2 py-1.5"
@@ -282,8 +287,9 @@ export const AddReportModal = ({ open, onClose, businessId, inspectorName, onSuc
                                                                     }}
                                                                     className="w-3.5 h-3.5 accent-red-500 shrink-0"
                                                                 />
+                                                                <span className="text-gray-500 font-mono text-xs shrink-0">{param.regCode}</span>
                                                                 <span className="text-gray-300 text-xs">{param.description}</span>
-                                                                <span className="text-gray-500 text-xs ml-auto shrink-0">${param.amount}</span>
+                                                                <span className="text-orange-400 text-xs ml-auto shrink-0">{param.novDay} dni</span>
                                                             </label>
                                                         ))}
                                                     </div>

@@ -7,8 +7,10 @@ import { Pagination } from '../components/ui/Pagination';
 
 interface CitationParam {
     _id: string;
+    regCode: string;
     description: string;
     amount: number;
+    novDay: number;
 }
 
 const PER_PAGE = 15;
@@ -47,11 +49,17 @@ export const CitationTable = () => {
                         <table className="w-full">
                             <thead>
                             <tr className="border-b border-gray-700">
+                                <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wider px-5 py-3 w-36">
+                                    Kod
+                                </th>
                                 <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wider px-5 py-3">
                                     Opis naruszenia
                                 </th>
-                                <th className="text-right text-xs font-semibold text-gray-400 uppercase tracking-wider px-5 py-3 w-36">
+                                <th className="text-right text-xs font-semibold text-gray-400 uppercase tracking-wider px-5 py-3 w-32">
                                     Kwota
+                                </th>
+                                <th className="text-right text-xs font-semibold text-gray-400 uppercase tracking-wider px-5 py-3 w-24">
+                                    Dni NOV
                                 </th>
                             </tr>
                             </thead>
@@ -61,11 +69,23 @@ export const CitationTable = () => {
                                     key={param._id}
                                     className={`border-b border-gray-800 last:border-0 ${idx % 2 === 0 ? '' : 'bg-gray-800/30'}`}
                                 >
+                                    <td className="px-5 py-3 w-36">
+                                            <span className="text-gray-400 font-mono text-xs bg-gray-800 px-2 py-0.5 rounded">
+                                                {param.regCode}
+                                            </span>
+                                    </td>
                                     <td className="px-5 py-3 text-white text-sm">{param.description}</td>
                                     <td className="px-5 py-3 text-right">
                                             <span className="text-yellow-300 font-mono font-medium text-sm">
                                                 $ {param.amount.toLocaleString('pl-PL')}
                                             </span>
+                                    </td>
+                                    <td className="px-5 py-3 text-right">
+                                        {param.novDay === 0 ? (
+                                            <span className="text-gray-500 text-xs italic">Bez NOV</span>
+                                        ) : (
+                                            <span className="text-orange-400 font-mono text-sm">{param.novDay} dni</span>
+                                        )}
                                     </td>
                                 </tr>
                             ))}

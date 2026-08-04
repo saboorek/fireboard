@@ -10,8 +10,10 @@ import { usePermission } from '../hooks/usePermission';
 
 interface CitationParam {
     _id: string;
+    regCode: string;
     description: string;
     amount: number;
+    novDay: number;
 }
 
 export const ManageParameters = () => {
@@ -21,14 +23,18 @@ export const ManageParameters = () => {
     const [params, setParams] = useState<CitationParam[]>([]);
     const [loadingParams, setLoadingParams] = useState(false);
 
+    const [addRegCode, setAddRegCode] = useState('');
     const [addDesc, setAddDesc] = useState('');
     const [addAmount, setAddAmount] = useState('');
+    const [addNovDay, setAddNovDay] = useState('');
     const [adding, setAdding] = useState(false);
     const [showAddForm, setShowAddForm] = useState(false);
 
     const [editId, setEditId] = useState<string | null>(null);
+    const [editRegCode, setEditRegCode] = useState('');
     const [editDesc, setEditDesc] = useState('');
     const [editAmount, setEditAmount] = useState('');
+    const [editNovDay, setEditNovDay] = useState('');
     const [saving, setSaving] = useState(false);
 
     const fetchParams = async () => {
@@ -55,7 +61,12 @@ export const ManageParameters = () => {
                 method: 'POST',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ description: addDesc, amount: Number(addAmount) }),
+                body: JSON.stringify({
+                    regCode: addRegCode.trim(),
+                    description: addDesc.trim(),
+                    amount: Number(addAmount),
+                    novDay: Number(addNovDay),
+                }),
             });
             if (!res.ok) {
                 const data = await res.json();
@@ -63,8 +74,10 @@ export const ManageParameters = () => {
                 return;
             }
             toast.success('Parametr dodany');
+            setAddRegCode('');
             setAddDesc('');
             setAddAmount('');
+            setAddNovDay('');
             setShowAddForm(false);
             await fetchParams();
         } catch {
@@ -76,8 +89,10 @@ export const ManageParameters = () => {
 
     const startEdit = (param: CitationParam) => {
         setEditId(param._id);
+        setEditRegCode(param.regCode);
         setEditDesc(param.description);
         setEditAmount(String(param.amount));
+        setEditNovDay(String(param.novDay));
     };
 
     const handleSaveEdit = async (id: string) => {
@@ -87,7 +102,12 @@ export const ManageParameters = () => {
                 method: 'PUT',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ description: editDesc, amount: Number(editAmount) }),
+                body: JSON.stringify({
+                    regCode: editRegCode.trim(),
+                    description: editDesc.trim(),
+                    amount: Number(editAmount),
+                    novDay: Number(editNovDay),
+                }),
             });
             if (!res.ok) {
                 const data = await res.json();
@@ -127,10 +147,8 @@ export const ManageParameters = () => {
             </div>
 
             <div className="flex flex-col gap-3">
-                {/* Sekcja parametrów cytacji */}
                 {canEditCitations && (
                     <div className="bg-gray-900 rounded-xl overflow-hidden">
-                        {/* Nagłówek sekcji — kliknięcie rozwija */}
                         <button
                             onClick={() => setCitationOpen(o => !o)}
                             className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-800 transition-colors"
@@ -147,21 +165,21 @@ export const ManageParameters = () => {
                             />
                         </button>
 
-                        {/* Rozwinięta zawartość */}
                         {citationOpen && (
                             <div className="border-t border-gray-700 px-5 py-4">
                                 {loadingParams ? (
                                     <p className="text-gray-500 text-sm py-4 text-center">Ładowanie...</p>
                                 ) : (
                                     <>
-                                        {/* Tabela parametrów */}
                                         {params.length > 0 && (
-                                            <div className="mb-4">
+                                            <div className="mb-4 overflow-x-auto">
                                                 <table className="w-full">
                                                     <thead>
                                                     <tr className="border-b border-gray-700">
+                                                        <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wider py-2 w-28">Kod</th>
                                                         <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wider py-2">Opis</th>
-                                                        <th className="text-right text-xs font-semibold text-gray-400 uppercase tracking-wider py-2 w-32">Kwota</th>
+                                                        <th className="text-right text-xs font-semibold text-gray-400 uppercase tracking-wider py-2 w-28">Kwota</th>
+                                                        <th className="text-right text-xs font-semibold text-gray-400 uppercase tracking-wider py-2 w-24">Dni NOV</th>
                                                         <th className="w-20"></th>
                                                     </tr>
                                                     </thead>
@@ -170,7 +188,16 @@ export const ManageParameters = () => {
                                                         <tr key={param._id} className="border-b border-gray-800 last:border-0">
                                                             {editId === param._id ? (
                                                                 <>
-                                                                    <td className="py-2 pr-3">
+                                                                    <td className="py-2 pr-2">
+                                                                        <input
+                                                                            type="text"
+                                                                            value={editRegCode}
+                                                                            onChange={e => setEditRegCode(e.target.value)}
+                                                                            placeholder="np. FC-01"
+                                                                            className="w-full bg-gray-800 text-white rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-red-600 font-mono"
+                                                                        />
+                                                                    </td>
+                                                                    <td className="py-2 pr-2">
                                                                         <input
                                                                             type="text"
                                                                             value={editDesc}
@@ -178,11 +205,20 @@ export const ManageParameters = () => {
                                                                             className="w-full bg-gray-800 text-white rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-red-600"
                                                                         />
                                                                     </td>
-                                                                    <td className="py-2 pr-3">
+                                                                    <td className="py-2 pr-2">
                                                                         <input
                                                                             type="number"
                                                                             value={editAmount}
                                                                             onChange={e => setEditAmount(e.target.value)}
+                                                                            className="w-full bg-gray-800 text-white rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-red-600 text-right"
+                                                                        />
+                                                                    </td>
+                                                                    <td className="py-2 pr-2">
+                                                                        <input
+                                                                            type="number"
+                                                                            min="0"
+                                                                            value={editNovDay}
+                                                                            onChange={e => setEditNovDay(e.target.value)}
                                                                             className="w-full bg-gray-800 text-white rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-red-600 text-right"
                                                                         />
                                                                     </td>
@@ -208,9 +244,21 @@ export const ManageParameters = () => {
                                                                 </>
                                                             ) : (
                                                                 <>
+                                                                    <td className="py-2.5">
+                                                                            <span className="text-gray-400 font-mono text-xs bg-gray-800 px-2 py-0.5 rounded">
+                                                                                {param.regCode}
+                                                                            </span>
+                                                                    </td>
                                                                     <td className="py-2.5 text-white text-sm">{param.description}</td>
                                                                     <td className="py-2.5 text-right text-yellow-300 font-mono text-sm">
                                                                         $ {param.amount.toLocaleString('pl-PL')}
+                                                                    </td>
+                                                                    <td className="py-2.5 text-right">
+                                                                        {param.novDay === 0 ? (
+                                                                            <span className="text-gray-500 text-xs italic">Bez NOV</span>
+                                                                        ) : (
+                                                                            <span className="text-orange-400 font-mono text-sm">{param.novDay} dni</span>
+                                                                        )}
                                                                     </td>
                                                                     <td className="py-2.5">
                                                                         <div className="flex items-center gap-1 justify-end">
@@ -241,44 +289,71 @@ export const ManageParameters = () => {
 
                                         {/* Formularz dodawania */}
                                         {showAddForm ? (
-                                            <form onSubmit={handleAdd} className="flex gap-3 items-end mt-2">
-                                                <div className="flex-1">
-                                                    <label className="text-gray-400 text-xs mb-1 block">Opis naruszenia</label>
-                                                    <input
-                                                        type="text"
-                                                        value={addDesc}
-                                                        onChange={e => setAddDesc(e.target.value)}
-                                                        placeholder="np. Brak gaśnicy"
-                                                        required
-                                                        className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-600"
-                                                    />
+                                            <form onSubmit={handleAdd} className="flex flex-col gap-3 mt-2">
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <div>
+                                                        <label className="text-gray-400 text-xs mb-1 block">Kod regulacji</label>
+                                                        <input
+                                                            type="text"
+                                                            value={addRegCode}
+                                                            onChange={e => setAddRegCode(e.target.value)}
+                                                            placeholder="np. FC-01"
+                                                            required
+                                                            className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-600 font-mono"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-gray-400 text-xs mb-1 block">Opis naruszenia</label>
+                                                        <input
+                                                            type="text"
+                                                            value={addDesc}
+                                                            onChange={e => setAddDesc(e.target.value)}
+                                                            placeholder="np. Brak gaśnicy"
+                                                            required
+                                                            className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-600"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-gray-400 text-xs mb-1 block">Kwota ($)</label>
+                                                        <input
+                                                            type="number"
+                                                            min="1"
+                                                            value={addAmount}
+                                                            onChange={e => setAddAmount(e.target.value)}
+                                                            placeholder="500"
+                                                            required
+                                                            className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-600"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-gray-400 text-xs mb-1 block">Dni NOV</label>
+                                                        <input
+                                                            type="number"
+                                                            min="0"
+                                                            value={addNovDay}
+                                                            onChange={e => setAddNovDay(e.target.value)}
+                                                            placeholder="7"
+                                                            required
+                                                            className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-600"
+                                                        />
+                                                    </div>
                                                 </div>
-                                                <div className="w-36">
-                                                    <label className="text-gray-400 text-xs mb-1 block">Kwota ($)</label>
-                                                    <input
-                                                        type="number"
-                                                        min="1"
-                                                        value={addAmount}
-                                                        onChange={e => setAddAmount(e.target.value)}
-                                                        placeholder="500"
-                                                        required
-                                                        className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-600"
-                                                    />
+                                                <div className="flex gap-3">
+                                                    <button
+                                                        type="submit"
+                                                        disabled={adding}
+                                                        className="px-4 py-2 rounded-lg bg-red-700 hover:bg-red-600 text-white text-sm font-medium transition-colors disabled:opacity-50"
+                                                    >
+                                                        {adding ? 'Dodawanie...' : 'Dodaj'}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowAddForm(false)}
+                                                        className="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 text-sm transition-colors"
+                                                    >
+                                                        Anuluj
+                                                    </button>
                                                 </div>
-                                                <button
-                                                    type="submit"
-                                                    disabled={adding}
-                                                    className="px-4 py-2 rounded-lg bg-red-700 hover:bg-red-600 text-white text-sm font-medium transition-colors disabled:opacity-50"
-                                                >
-                                                    {adding ? 'Dodawanie...' : 'Dodaj'}
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setShowAddForm(false)}
-                                                    className="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 text-sm transition-colors"
-                                                >
-                                                    Anuluj
-                                                </button>
                                             </form>
                                         ) : (
                                             <button

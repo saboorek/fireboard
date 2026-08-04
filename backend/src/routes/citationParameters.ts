@@ -7,7 +7,7 @@ const router = Router();
 
 router.get('/', isAuthenticated, async (req: Request, res: Response) => {
     try {
-        const params = await CitationParameters.find().sort({ amount: 1 });
+        const params = await CitationParameters.find().sort({ regCode: 1 });
         res.json(params);
     } catch (err) {
         console.error('[GET /citation-parameters]', err);
@@ -17,11 +17,16 @@ router.get('/', isAuthenticated, async (req: Request, res: Response) => {
 
 router.post('/', isAuthenticated, requirePermission('canEditCitationParameters'), async (req: Request, res: Response) => {
     try {
-        const { description, amount } = req.body;
-        if (!description?.trim() || !amount) {
+        const { regCode, description, amount, novDay } = req.body;
+        if (!regCode?.trim() || !description?.trim() || !amount || novDay === undefined || novDay === null) {
             return res.status(400).json({ message: 'Wypełnij wszystkie pola' });
         }
-        const param = new CitationParameters({ description: description.trim(), amount: Number(amount) });
+        const param = new CitationParameters({
+            regCode: regCode.trim(),
+            description: description.trim(),
+            amount: Number(amount),
+            novDay: Number(novDay),
+        });
         await param.save();
         res.status(201).json(param);
     } catch (err) {
@@ -32,10 +37,18 @@ router.post('/', isAuthenticated, requirePermission('canEditCitationParameters')
 
 router.put('/:id', isAuthenticated, requirePermission('canEditCitationParameters'), async (req: Request, res: Response) => {
     try {
-        const { description, amount } = req.body;
+        const { regCode, description, amount, novDay } = req.body;
+        if (!regCode?.trim() || !description?.trim() || !amount || novDay === undefined || novDay === null) {
+            return res.status(400).json({ message: 'Wypełnij wszystkie pola' });
+        }
         const param = await CitationParameters.findByIdAndUpdate(
             req.params.id,
-            { description: description.trim(), amount: Number(amount) },
+            {
+                regCode: regCode.trim(),
+                description: description.trim(),
+                amount: Number(amount),
+                novDay: Number(novDay),
+            },
             { new: true }
         );
         if (!param) return res.status(404).json({ message: 'Parametr nie znaleziony' });
