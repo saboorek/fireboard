@@ -58,7 +58,37 @@ router.get('/', isAuthenticated, async (req: Request, res: Response) => {
 router.get('/all', isAuthenticated, requirePermission('canEditCharacter'), async (_req: Request, res: Response) => {
     try {
         const characters = await Character.find().populate('roles').sort({ createdAt: -1 });
-        res.json(characters);
+
+        const uniqueIds = [...new Set(characters.map(c => c.discordId))];
+
+        const guildId = process.env.DISCORD_GUILD_ID!;
+        const botToken = process.env.DISCORD_BOT_TOKEN!;
+
+        const memberMap: Record<string, { avatar: string | null; username: string | null }> = {};
+
+        await Promise.all(uniqueIds.map(async (id) => {
+            try {
+                const res = await fetch(
+                    `https://discord.com/api/v10/guilds/${guildId}/members/${id}`,
+                    { headers: { Authorization: `Bot ${botToken}` } }
+                );
+                if (res.ok) {
+                    const member = await res.json() as { user: { avatar: string | null; username: string } };
+                    memberMap[id] = {
+                        avatar: member.user.avatar,
+                        username: member.user.username,
+                    };
+                }
+            } catch { /* ignoruj błędy dla pojedynczego użytkownika */ }
+        }));
+
+        const enriched = characters.map(c => ({
+            ...c.toObject(),
+            discordAvatarHash: memberMap[c.discordId]?.avatar ?? null,
+            discordUsername: memberMap[c.discordId]?.username ?? c.discordUsername,
+        }));
+
+        res.json(enriched);
     } catch (err) {
         console.error('[GET /characters/all]', err);
         res.status(500).json({ message: 'Błąd serwera' });
@@ -77,6 +107,7 @@ router.post('/', isAuthenticated, async (req: Request, res: Response) => {
         const character = new Character({
             discordId: user.id,
             discordUsername: user.username ?? null,
+            discordAvatarHash: user.avatar ?? null,  // ← NOWE
             firstName: firstName.trim(),
             lastName: lastName.trim(),
             roles: [],
