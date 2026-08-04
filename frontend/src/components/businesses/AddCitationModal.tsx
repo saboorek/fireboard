@@ -9,8 +9,10 @@ import config from '../../utils/config';
 
 interface CitationParam {
     _id: string;
+    regCode: string;
     description: string;
     amount: number;
+    novDay: number;
 }
 
 interface Props {
@@ -174,6 +176,7 @@ export const AddCitationModal = ({ open, onClose, businessId, inspectorName, onS
                                                 }}
                                                 className="w-3.5 h-3.5 accent-yellow-500 shrink-0"
                                             />
+                                            <span className="text-gray-500 font-mono text-xs shrink-0">{param.regCode}</span>
                                             <span className="text-gray-300 text-xs">{param.description}</span>
                                             <span className="text-gray-500 text-xs ml-auto shrink-0">${param.amount}</span>
                                         </label>
