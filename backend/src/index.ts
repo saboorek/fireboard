@@ -15,6 +15,7 @@ import './models/DiscordUser';
 import roles from './routes/roles';
 import businesses from './routes/businesses';
 import citationParameters from './routes/citationParameters';
+import meta from './routes/meta';
 
 dotenv.config();
 
@@ -23,7 +24,8 @@ const requiredEnvVars = [
     'SESSION_SECRET',
     'DISCORD_CLIENT_ID',
     'DISCORD_CLIENT_SECRET',
-    'DISCORD_CALLBACK_URL'
+    'DISCORD_CALLBACK_URL',
+    'FRONTEND_URL'
 ];
 
 async function migrateRoles() {
@@ -55,10 +57,14 @@ for (const envVar of requiredEnvVars) {
 const app = express();
 const isProduction = process.env.NODE_ENV === 'production';
 
+// FRONTEND_URL jest wymagane i różne dla każdego środowiska (staging/produkcja),
+// dzięki czemu CORS i redirecty nigdy nie "mieszają się" między środowiskami.
+const frontendUrl = process.env.FRONTEND_URL!;
+
 app.use(express.json());
 
 app.use(cors({
-    origin: isProduction ? process.env.FRONTEND_URL : 'http://localhost:5173',
+    origin: frontendUrl,
     credentials: true,
 }));
 
@@ -99,6 +105,7 @@ app.use('/api/characters', characters);
 app.use('/api/roles', roles);
 app.use('/api/businesses', businesses);
 app.use('/api/citation-parameters', citationParameters);
+app.use('/api/meta', meta);
 
 
 const PORT = process.env.PORT || 5000;
@@ -107,7 +114,7 @@ const startServer = async () => {
     try {
         await connectDatabase();
         await migrateRoles();
-        app.listen(PORT, () => console.log(`🚀 Server running on ${isProduction ? process.env.FRONTEND_URL : `http://localhost:${PORT}`}`));
+        app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT} (env: ${process.env.NODE_ENV ?? 'development'}, frontend: ${frontendUrl})`));
     } catch (error) {
         console.error('❌ Failed to start server:', error);
         process.exit(1);
