@@ -185,6 +185,18 @@ Workflow `deploy-production.yml` używa środowiska `production`, a `deploy-stag
 
 Oba workflow można też uruchomić ręcznie z zakładki Actions (`workflow_dispatch`).
 
+### Przyspieszony `npm ci` (pomijanie instalacji bez zmian)
+
+Oba workflow liczą hash SHA-256 z `package-lock.json` po każdym `git reset --hard`
+i porównują go z hashem zapisanym w pliku `.ci-lock-hash` (nieśledzonym przez git,
+zostaje na serwerze między deployami razem z `node_modules`). `npm ci` uruchamia się
+**tylko wtedy**, gdy:
+- `node_modules` nie istnieje (pierwszy deploy), albo
+- `package-lock.json` zmienił się od ostatniego udanego deployu (dodano/zaktualizowano paczkę).
+
+Dzięki temu zwykły deploy bez zmian w zależnościach jest znacznie szybszy — pomija
+się najdłuższy krok (`npm ci` dla backendu i frontendu).
+
 ## 9. Bezpieczeństwo — WAŻNE
 
 Podczas audytu w repozytorium znaleziono **prawdziwe sekrety w plikach `.env`**

@@ -36,14 +36,31 @@ jobs:
             git fetch origin "${{ github.ref_name }}"
             git reset --hard "origin/${{ github.ref_name }}"
 
-            echo "==> Instalacja i build backendu..."
+            # Instaluje zależności TYLKO jeśli package-lock.json się zmienił
+            # od ostatniego udanego deployu (lub node_modules nie istnieje).
+            # Hash poprzedniej instalacji trzymamy w pliku, który NIE jest
+            # częścią repo (git reset --hard go nie usuwa, bo jest nieśledzony).
+            install_if_needed() {
+              local hash_file=".ci-lock-hash"
+              local current_hash
+              current_hash=$(sha256sum package-lock.json | awk '{print $1}')
+              if [ -d node_modules ] && [ -f "$hash_file" ] && [ "$(cat "$hash_file")" = "$current_hash" ]; then
+                echo "==> [$(basename "$PWD")] Zależności bez zmian - pomijam npm ci"
+              else
+                echo "==> [$(basename "$PWD")] Zmiana w package-lock.json (lub brak node_modules) - instaluję..."
+                npm ci
+                echo "$current_hash" > "$hash_file"
+              fi
+            }
+
+            echo "==> Backend..."
             cd backend
-            npm ci
+            install_if_needed
             npm run build
 
-            echo "==> Instalacja i build frontendu..."
+            echo "==> Frontend..."
             cd ../frontend
-            npm ci
+            install_if_needed
             npm run build
 
             echo "==> Restart backendu (PM2)..."

@@ -12,6 +12,7 @@ backend/node_modules/
 dist
 dist-ssr
 *.local
+.ci-lock-hash
 
 # Pliki konfiguracyjne i sekrety
 .env
