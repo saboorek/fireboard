@@ -32,7 +32,7 @@ export const CommitInfo = () => {
     useEffect(() => {
         fetch(`${config.URL}/meta/release`, { credentials: 'include' })
             .then(r => {
-                if (!r.ok) return null; // Jeśli nie ma release, nie wywalaj błędu
+                if (!r.ok) return null;
                 return r.json();
             })
             .then(data => {

@@ -1,7 +1,4 @@
-export const DashboardCard = ({
-                                  title,
-                                  children,
-                              }: {
+export const DashboardCard = ({title, children,}: {
     title: string,
     children: React.ReactNode;
 }) => (

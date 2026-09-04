@@ -12,14 +12,7 @@ interface Props {
     children?: ReactNode;
 }
 
-export const PageHeader = ({
-                               title,
-                               actionLabel,
-                               actionIcon = faPlus,
-                               onAction,
-                               showAction = true,
-                               children,
-                           }: Props) => {
+export const PageHeader = ({title, actionLabel, actionIcon = faPlus, onAction, showAction = true, children,}: Props) => {
     return (
         <div className="flex items-center justify-between mb-6">
             <h1 className="text-2xl font-bold text-white">{title}</h1>

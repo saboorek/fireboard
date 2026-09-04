@@ -1,8 +1,4 @@
 import dotenv from 'dotenv';
-// dotenv.config() MUSI wykonać się jako pierwsze, zanim zaimportujemy jakiekolwiek
-// moduły odczytujące process.env na poziomie modułu (np. routes/auth.ts).
-// Backend kompiluje się do CommonJS, więc `import` = `require()` wykonywane
-// dokładnie w kolejności zapisu w pliku - stąd ta kolejność ma znaczenie.
 dotenv.config();
 
 import express from 'express';
@@ -62,8 +58,6 @@ for (const envVar of requiredEnvVars) {
 const app = express();
 const isProduction = process.env.NODE_ENV === 'production';
 
-// FRONTEND_URL jest wymagane i różne dla każdego środowiska (staging/produkcja),
-// dzięki czemu CORS i redirecty nigdy nie "mieszają się" między środowiskami.
 const frontendUrl = process.env.FRONTEND_URL!;
 
 app.use(express.json());
