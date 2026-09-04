@@ -7,8 +7,9 @@ import type { IPermissions } from '../models/Role';
 
 const router = Router();
 
-// FRONTEND_URL musi być ustawione osobno dla każdego środowiska (staging/produkcja)
-const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:5173';
+// Liczone przy KAŻDYM żądaniu (nie przy imporcie modułu!), żeby nie było zależności
+// od kolejności ładowania dotenv.config() względem importów.
+const getFrontendUrl = () => process.env.FRONTEND_URL ?? 'http://localhost:5173';
 
 async function hasRequiredRole(discordUserId: string): Promise<boolean> {
     const guildId  = process.env.DISCORD_GUILD_ID!;
@@ -80,7 +81,7 @@ router.get('/discord', passport.authenticate('discord'));
 router.get(
     '/discord/callback',
     passport.authenticate('discord', {
-        failureRedirect: `${frontendUrl}/login`,
+        failureRedirect: `${getFrontendUrl()}/login`,
     }),
     async (req: Request, res: Response) => {
         const user = req.user as any;
@@ -93,7 +94,7 @@ router.get(
             }
         );
 
-        res.redirect(`${frontendUrl}/dashboard`);
+        res.redirect(`${getFrontendUrl()}/dashboard`);
     }
 );
 

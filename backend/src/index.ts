@@ -1,5 +1,11 @@
-import express from 'express';
 import dotenv from 'dotenv';
+// dotenv.config() MUSI wykonać się jako pierwsze, zanim zaimportujemy jakiekolwiek
+// moduły odczytujące process.env na poziomie modułu (np. routes/auth.ts).
+// Backend kompiluje się do CommonJS, więc `import` = `require()` wykonywane
+// dokładnie w kolejności zapisu w pliku - stąd ta kolejność ma znaczenie.
+dotenv.config();
+
+import express from 'express';
 import cors from 'cors';
 import session from 'express-session';
 import MongoStore from 'connect-mongo';
@@ -17,7 +23,6 @@ import businesses from './routes/businesses';
 import citationParameters from './routes/citationParameters';
 import meta from './routes/meta';
 
-dotenv.config();
 
 const requiredEnvVars = [
     'MONGO_URL',
