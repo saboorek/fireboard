@@ -30,24 +30,29 @@ export const CommitInfo = () => {
     }, []);
 
     useEffect(() => {
-        if (window.location.hostname !== 'localhost') {
-            fetch(`${config.URL}/meta/release`, { credentials: 'include' })
-                .then(r => {
-                    if (!r.ok) return null; // Jeśli nie ma release, nie wywalaj błędu
-                    return r.json();
-                })
-                .then(data => {
-                    if (data && data.tag_name) {
-                        setRelease(data.tag_name);
-                    }
-                })
-                .catch(err => console.error("Error fetching release data:", err));
-        }
+        fetch(`${config.URL}/meta/release`, { credentials: 'include' })
+            .then(r => {
+                if (!r.ok) return null; // Jeśli nie ma release, nie wywalaj błędu
+                return r.json();
+            })
+            .then(data => {
+                if (data && data.tag_name) {
+                    setRelease(data.tag_name);
+                }
+            })
+            .catch(err => console.error("Error fetching release data:", err));
     }, []);
 
 
     return (
         <div className="text-center text-xs text-gray-500 break-words py-2">
+            {config.IS_STAGING && (
+                <p className="mb-1">
+                    <span className="inline-block rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/40 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">
+                        Wersja testowa
+                    </span>
+                </p>
+            )}
             <p>Wersja: <span className="text-gray-400 font-semibold">{release}</span></p>
             <p>Commit: <span className="text-gray-400 font-semibold">
                 {error ? error : (commit ?? 'Ładowanie...')}
