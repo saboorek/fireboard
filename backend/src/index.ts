@@ -57,7 +57,6 @@ for (const envVar of requiredEnvVars) {
 
 const app = express();
 const isProduction = process.env.NODE_ENV === 'production';
-
 const frontendUrl = process.env.FRONTEND_URL!;
 
 app.use(express.json());
@@ -66,6 +65,8 @@ app.use(cors({
     origin: frontendUrl,
     credentials: true,
 }));
+
+app.set('trust proxy', 1);
 
 app.use(session({
     secret: process.env.SESSION_SECRET!,
@@ -78,7 +79,7 @@ app.use(session({
     cookie: {
         secure: isProduction,
         httpOnly: true,
-        sameSite: 'lax',
+        sameSite: isProduction ? 'none' : 'lax',
         maxAge: 1000 * 60 * 60 * 24 * 7,
     },
 }));
