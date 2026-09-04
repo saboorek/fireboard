@@ -7,6 +7,10 @@ import type { IPermissions } from '../models/Role';
 
 const router = Router();
 
+// Liczone przy KAŻDYM żądaniu (nie przy imporcie modułu!), żeby nie było zależności
+// od kolejności ładowania dotenv.config() względem importów.
+const getFrontendUrl = () => process.env.FRONTEND_URL ?? 'http://localhost:5173';
+
 async function hasRequiredRole(discordUserId: string): Promise<boolean> {
     const guildId  = process.env.DISCORD_GUILD_ID!;
     const botToken = process.env.DISCORD_BOT_TOKEN!;
@@ -77,9 +81,7 @@ router.get('/discord', passport.authenticate('discord'));
 router.get(
     '/discord/callback',
     passport.authenticate('discord', {
-        failureRedirect: process.env.NODE_ENV === 'production'
-            ? `${process.env.FRONTEND_URL}/login`
-            : 'http://localhost:5173/login',
+        failureRedirect: `${getFrontendUrl()}/login`,
     }),
     async (req: Request, res: Response) => {
         const user = req.user as any;
@@ -92,10 +94,7 @@ router.get(
             }
         );
 
-        const redirectUrl = process.env.NODE_ENV === 'production'
-            ? `${process.env.FRONTEND_URL}/dashboard`
-            : 'http://localhost:5173/dashboard';
-        res.redirect(redirectUrl);
+        res.redirect(`${getFrontendUrl()}/dashboard`);
     }
 );
 

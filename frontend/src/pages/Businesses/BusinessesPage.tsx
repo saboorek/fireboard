@@ -50,19 +50,16 @@ const getDaysUntilNovDeadline = (activeNov?: { deadlineDate: string } | null): n
     return Math.ceil((new Date(activeNov.deadlineDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 };
 
-// Pilność biznesu do sortowania (niższy = pilniejszy)
 const getUrgency = (b: Business): number => {
-    // Niezaliczona kontrola z aktywnym NOV — najwyższy priorytet
     if (b.lastControlPassed === false) {
         const novDays = getDaysUntilNovDeadline(b.activeNov);
-        if (novDays === null) return 10; // niezaliczona bez NOV
-        if (novDays <= 0) return 0;      // przedawniona
+        if (novDays === null) return 10;
+        if (novDays <= 0) return 0;
         if (novDays <= 3) return 1;
         return 2;
     }
-    // Zaliczona — standardowe 60 dni
     const d = getDaysUntilInspection(b.lastInspectionDate);
-    if (d === null) return 11;           // brak kontroli
+    if (d === null) return 11;
     if (d <= 0) return 3;
     if (d <= 7) return 4;
     if (d <= 14) return 5;
@@ -125,7 +122,6 @@ export const BusinessesPage = () => {
             const urgencyA = getUrgency(a);
             const urgencyB = getUrgency(b);
             if (urgencyA !== urgencyB) return urgencyA - urgencyB;
-            // Przy tym samym priorytecie — sortuj po dniach rosnąco
             const dA = a.lastControlPassed === false
                 ? getDaysUntilNovDeadline(a.activeNov) ?? 999
                 : getDaysUntilInspection(a.lastInspectionDate) ?? 999;

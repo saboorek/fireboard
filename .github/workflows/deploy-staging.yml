@@ -1,0 +1,71 @@
+name: Deploy - Staging (staging-lscofd)
+
+# Wdrożenie testowe uruchamia się przy push na KAŻDĄ gałąź poza `master`.
+# Dzięki temu nowe gałęzie tworzone pod konkretne zmiany trafiają automatycznie
+# na środowisko staging, bez ryzyka nadpisania produkcji.
+on:
+  push:
+    branches-ignore:
+      - master
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy to staging VPS
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          # Wszystkie zmienne (ścieżka, nazwa procesu PM2) pochodzą z sekretów
+          # środowiska "staging" w GitHub -> nigdy nie mieszają się z produkcją.
+          script: |
+            set -e
+            cd "${{ secrets.STAGING_PATH }}"
+
+            echo "==> Pobieranie najnowszej wersji gałęzi ${{ github.ref_name }}..."
+            git fetch origin "${{ github.ref_name }}"
+            git reset --hard "origin/${{ github.ref_name }}"
+
+            # Instaluje zależności TYLKO jeśli package-lock.json się zmienił
+            # od ostatniego udanego deployu (lub node_modules nie istnieje).
+            # Hash poprzedniej instalacji trzymamy w pliku, który NIE jest
+            # częścią repo (git reset --hard go nie usuwa, bo jest nieśledzony).
+            install_if_needed() {
+              local hash_file=".ci-lock-hash"
+              local current_hash
+              current_hash=$(sha256sum package-lock.json | awk '{print $1}')
+              if [ -d node_modules ] && [ -f "$hash_file" ] && [ "$(cat "$hash_file")" = "$current_hash" ]; then
+                echo "==> [$(basename "$PWD")] Zależności bez zmian - pomijam npm ci"
+              else
+                echo "==> [$(basename "$PWD")] Zmiana w package-lock.json (lub brak node_modules) - instaluję..."
+                npm ci
+                echo "$current_hash" > "$hash_file"
+              fi
+            }
+
+            echo "==> Backend..."
+            cd backend
+            install_if_needed
+            npm run build
+
+            echo "==> Frontend..."
+            cd ../frontend
+            install_if_needed
+            npm run build
+
+            echo "==> Restart backendu (PM2)..."
+            pm2 restart "${{ secrets.STAGING_PM2_NAME }}" --update-env || pm2 start dist/index.js --name "${{ secrets.STAGING_PM2_NAME }}" --cwd "${{ secrets.STAGING_PATH }}/backend"
+            pm2 save
+
+            echo "==> Deploy staging zakończony (gałąź: ${{ github.ref_name }})."
+

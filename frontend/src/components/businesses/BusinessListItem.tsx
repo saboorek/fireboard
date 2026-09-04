@@ -29,13 +29,11 @@ const getDaysUntilNovDeadline = (activeNov?: { deadlineDate: string } | null): n
 };
 
 const getRowColor = (lastControlPassed: boolean | null | undefined, novDays: number | null, inspectionDays: number | null): string => {
-    // Ostatnia kontrola niezaliczona — kolor zależy od NOV deadline
     if (lastControlPassed === false) {
         if (novDays === null || novDays <= 0) return 'border-l-4 border-red-500';
         if (novDays <= 3) return 'border-l-4 border-red-500';
         return 'border-l-4 border-orange-500';
     }
-    // Ostatnia kontrola zaliczona — standardowe 60 dni
     if (inspectionDays === null) return '';
     if (inspectionDays <= 7) return 'border-l-4 border-red-500';
     if (inspectionDays <= 14) return 'border-l-4 border-yellow-500';
@@ -72,7 +70,6 @@ export const BusinessListItem = ({ business, onClick }: Props) => {
             </div>
             <div className="text-right shrink-0 flex flex-col items-end gap-0.5">
 
-                {/* === OSTATNIA KONTROLA NIEZALICZONA → tryb NOV === */}
                 {lastControlPassed === false && (
                     <>
                         {novDays === null && (
@@ -96,7 +93,6 @@ export const BusinessListItem = ({ business, onClick }: Props) => {
                     </>
                 )}
 
-                {/* === OSTATNIA KONTROLA ZALICZONA lub brak kontroli → tryb normalny 60 dni === */}
                 {lastControlPassed !== false && (
                     <>
                         {inspectionDays === null && (
